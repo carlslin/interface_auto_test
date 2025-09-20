@@ -1,0 +1,25 @@
+# 测试专用配置
+# version: 1.0
+
+global:
+  timeout: 30
+  retry: 3
+  parallel: 5
+
+environments:
+  dev:
+    base_url: http://localhost:8080
+    headers:
+      Content-Type: application/json
+    timeout: 30
+  test:
+    base_url: http://localhost:8080
+    headers:
+      Content-Type: application/json  
+    timeout: 30
+  prod:
+    base_url: http://prod-api.example.com
+    headers:
+      Authorization: Bearer prod-token
+      Content-Type: application/json
+    timeout: 30

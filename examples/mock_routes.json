@@ -1,0 +1,92 @@
+{
+  "routes": [
+    {
+      "id": "get_pets",
+      "method": "GET",
+      "path": "/api/v1/pets",
+      "response": {
+        "status_code": 200,
+        "headers": {
+          "Content-Type": "application/json"
+        },
+        "body": [
+          {
+            "id": 1,
+            "name": "Buddy",
+            "category": "dog",
+            "status": "available"
+          },
+          {
+            "id": 2,
+            "name": "Fluffy",
+            "category": "cat",
+            "status": "available"
+          }
+        ]
+      }
+    },
+    {
+      "id": "create_pet",
+      "method": "POST",
+      "path": "/api/v1/pets",
+      "response": {
+        "status_code": 201,
+        "headers": {
+          "Content-Type": "application/json"
+        },
+        "body": {
+          "id": "{random_id}",
+          "name": "{body_name}",
+          "category": "{body_category}",
+          "status": "available"
+        },
+        "dynamic": "template"
+      }
+    },
+    {
+      "id": "get_pet_by_id",
+      "method": "GET",
+      "path": "/api/v1/pets/{id}",
+      "response": {
+        "status_code": 200,
+        "headers": {
+          "Content-Type": "application/json"
+        },
+        "body": {
+          "id": 1,
+          "name": "Buddy",
+          "category": "dog",
+          "status": "available"
+        }
+      }
+    },
+    {
+      "id": "update_pet",
+      "method": "PUT",
+      "path": "/api/v1/pets/{id}",
+      "response": {
+        "status_code": 200,
+        "headers": {
+          "Content-Type": "application/json"
+        },
+        "body": {
+          "id": "{path_id}",
+          "name": "{body_name}",
+          "category": "{body_category}",
+          "status": "{body_status}"
+        },
+        "dynamic": "template"
+      }
+    },
+    {
+      "id": "delete_pet",
+      "method": "DELETE",
+      "path": "/api/v1/pets/{id}",
+      "response": {
+        "status_code": 204,
+        "headers": {},
+        "body": ""
+      }
+    }
+  ]
+}

@@ -1,0 +1,60 @@
+# 默认配置文件
+# 支持多环境配置
+
+# 全局配置
+global:
+  timeout: 30         # 请求超时时间(秒)
+  retry: 3            # 重试次数
+  parallel: 5         # 并发数
+  keep_alive: true    # 启用长连接
+  pool_connections: 10  # 连接池大小
+  pool_maxsize: 10     # 单个主机最大连接数
+  
+# 环境配置
+environments:
+  dev:
+    base_url: "http://dev-api.example.com"
+    headers:
+      Authorization: "Bearer dev-token"
+      Content-Type: "application/json"
+    timeout: 30
+    
+  test:
+    base_url: "http://test-api.example.com" 
+    headers:
+      Authorization: "Bearer test-token"
+      Content-Type: "application/json"
+    timeout: 30
+    
+  prod:
+    base_url: "https://api.example.com"
+    headers:
+      Authorization: "Bearer prod-token"
+      Content-Type: "application/json"
+    timeout: 15
+
+# Mock 服务器配置
+mock:
+  port: 5000
+  host: "localhost"
+  debug: true
+  enable_cors: true
+  delay: 0        # 模拟网络延迟(毫秒)
+  
+# 报告配置
+report:
+  format: ["html", "json", "xml"]
+  output_dir: "./reports"
+  template: "default"
+  
+# 测试数据配置
+test_data:
+  data_dir: "./data"
+  generate_data: true
+  faker_locale: "zh_CN"
+
+# 日志配置
+logging:
+  level: "INFO"
+  format: "%(asctime)s - %(name)s - %(levelname)s - %(message)s"
+  file: "./logs/autotest.log"
