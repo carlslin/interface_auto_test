@@ -204,7 +204,7 @@ authentication:
 # 环境变量配置（推荐用于敏感信息）
 # export AUTH_API_AUTH_USERNAME=your_username
 # export AUTH_API_AUTH_PASSWORD=your_password
-# export AUTH_KEY_AUTH_API_KEY=your-api-key
+# export AUTH_KEY_AUTH_API_KEY=your-api-key-here
 
 # 安全提示:
 # 1. 生产环境中请使用环境变量存储敏感信息
@@ -547,54 +547,6 @@ class {_to_class_name(api_info.get('title', 'API'))}Test(BaseTest):
                 text = text.replace(placeholder, str(value))
         
         return text
-'''
-    
-    # 为每个接口生成测试方法
-    for i, path in enumerate(paths):
-        method_name = _to_method_name(path.get('operationId') or f"{path.get('method', 'get')}_{i}")
-        
-        test_content += f'''
-    def test_{method_name}(self, auth_required: bool = {'True' if '/login' not in path.get('path', '') else 'False'}):
-        """测试 {path.get('summary', path.get('path', ''))}"""
-        
-        # 设置认证
-        headers = {{}}
-        if auth_required and self.auth_manager:
-            headers.update(self.setup_authentication())
-        
-        # 替换URL中的变量
-        url = self.substitute_variables("{path.get('path', '')}")
-        
-        # 准备请求参数
-        params = {{}}
-        request_body = None
-        
-        # TODO: 根据API规范设置实际参数
-        {"# 示例数据 (请根据实际需求修改)" if mock_sensitive_data else ""}
-        
-        # 发送请求
-        result = self.make_request(
-            method="{path.get('method', 'GET').upper()}",
-            url=url,
-            params=params,
-            headers=headers,
-            json=request_body,
-            test_name="test_{method_name}"
-        )
-        
-        # 基础断言
-        self.assert_status_code(result, {path.get('expected_status', 200)})
-        
-        # 提取响应数据 (如果需要)
-        extractions = {{
-            # 示例: 'user_id': 'id', 'token': 'access_token'
-        }}
-        
-        if result.success and result.response_data and extractions:
-            extracted = self.extract_data(result.response_data, extractions)
-            self.logger.info(f"提取的数据: {{extracted}}")
-        
-        return result
     
     def run_tests(self):
         """运行所有测试"""
@@ -632,15 +584,19 @@ def _generate_postman_collection(output_path: Path, parser: OpenAPIParser, auth_
     }
     
     for path in parser.get_all_paths():
+        # 使用变量来避免f-string嵌套问题
+        base_url_var = "{{base_url}}"
+        path_url = path.get('path', '')
+        
         item = {
             "name": path.get('summary', path.get('path', '')),
             "request": {
                 "method": path.get('method', 'GET').upper(),
                 "header": [],
                 "url": {
-                    "raw": "{{base_url}}" + path.get('path', ''),
-                    "host": ["{{base_url}}"],
-                    "path": path.get('path', '').split('/')[1:]
+                    "raw": base_url_var + path_url,
+                    "host": [base_url_var],
+                    "path": path_url.split('/')[1:]
                 }
             }
         }
@@ -797,7 +753,10 @@ bash curl/api_tests.sh
 """
     
     for i, path in enumerate(paths, 1):
-        doc_content += f"\n{i}. **{path.get('method', 'GET').upper()} {path.get('path', '')}** - {path.get('summary', '无描述')}"
+        method = path.get('method', 'GET').upper()
+        path_str = path.get('path', '')
+        summary = path.get('summary', '无描述')
+        doc_content += f"\n{i}. **{method} {path_str}** - {summary}"
     
     doc_file = output_path / 'README.md'
     with open(doc_file, 'w', encoding='utf-8') as f:
