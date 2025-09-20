@@ -390,16 +390,18 @@ def _save_dependency_analysis(output_path: Path, analysis: Dict[str, Any]):
 
 def _generate_dependency_report(analysis: Dict[str, Any]) -> str:
     """生成依赖分析报告"""
-    report = f"""# API依赖分析报告
-
-## 📊 基本信息
-- **API名称**: {analysis['api_info'].get('title', 'Unknown')}
-- **版本**: {analysis['api_info'].get('version', 'Unknown')}
-- **接口总数**: {analysis['total_endpoints']}
-- **分析时间**: {datetime.now().strftime('%Y-%m-%d %H:%M:%S')}
-
-## 🔐 认证需求分析
-"""
+    api_title = analysis['api_info'].get('title', 'Unknown')
+    api_version = analysis['api_info'].get('version', 'Unknown')
+    total_endpoints = str(analysis['total_endpoints'])
+    current_time = datetime.now().strftime('%Y-%m-%d %H:%M:%S')
+    
+    report = "# API依赖分析报告\n\n"
+    report += "## 📊 基本信息\n"
+    report += "- **API名称**: " + api_title + "\n"
+    report += "- **版本**: " + api_version + "\n"
+    report += "- **接口总数**: " + total_endpoints + "\n"
+    report += "- **分析时间**: " + current_time + "\n\n"
+    report += "## 🔐 认证需求分析\n"
     
     if analysis['auth_required_endpoints']:
         report += "\n### 需要认证的接口\n"
@@ -446,113 +448,180 @@ def _generate_python_tests(output_path: Path, parser: OpenAPIParser,
     api_info = parser.get_api_info()
     paths = parser.get_all_paths()
     
-    # 生成增强的测试类
-    test_content = f'''#!/usr/bin/env python3
-"""
-{api_info.get('title', 'API')} 自动化测试
-生成时间: {datetime.now().strftime('%Y-%m-%d %H:%M:%S')}
-支持功能: 认证管理, 依赖处理, 数据提取
-"""
-
-import sys
-import json
-import time
-import logging
-from pathlib import Path
-from typing import Dict, Any, Optional, List
-
-# 添加项目路径
-project_root = Path(__file__).parent.parent
-sys.path.insert(0, str(project_root))
-
-from src.core.base_test import BaseTest
-from src.auth.auth_manager import AuthManager
-from src.workflow.dependency_manager import DependencyManager, WorkflowResult
-
-
-class {_to_class_name(api_info.get('title', 'API'))}Test(BaseTest):
-    """
-    {api_info.get('title', 'API')} 自动化测试类
-    """
+    # 使用简单字符串拼接来生成测试类
+    api_title = api_info.get('title', 'API')
+    generate_time = datetime.now().strftime('%Y-%m-%d %H:%M:%S')
+    class_name = _to_class_name(api_title)
     
-    def __init__(self, config_path: Optional[str] = None, auth_config: Optional[str] = None):
-        super().__init__(config_path)
-        
-        # 初始化认证管理器
-        {"self.auth_manager = AuthManager(auth_config)" if auth_manager else "self.auth_manager = None"}
-        
-        # 初始化依赖管理器
-        {"self.dependency_manager = DependencyManager()" if dependency_manager else "self.dependency_manager = None"}
-        
-        # 测试数据存储
-        self.test_data = {{}}
-        self.execution_order = []
-        
-    def setup_authentication(self, auth_name: str = "default") -> Dict[str, str]:
-        """设置认证"""
-        if not self.auth_manager:
-            return {{}}
-        
-        try:
-            headers = self.auth_manager.get_auth_headers(auth_name)
-            self.logger.info(f"认证设置成功: {{auth_name}}")
-            return headers
-        except Exception as e:
-            self.logger.error(f"认证设置失败: {{str(e)}}")
-            return {{}}
+    # 构建文件头部
+    test_content = "#!/usr/bin/env python3\n"
+    test_content += '"""\n'
+    test_content += api_title + " 自动化测试\n"
+    test_content += "生成时间: " + generate_time + "\n"
+    test_content += "支持功能: 认证管理, 依赖处理, 数据提取\n"
+    test_content += '"""\n\n'
     
-    def extract_data(self, response_data: Dict[str, Any], extractions: Dict[str, str]) -> Dict[str, Any]:
-        """从响应中提取数据"""
-        extracted = {{}}
-        
-        for alias, path in extractions.items():
-            try:
-                value = self._get_nested_value(response_data, path)
-                if value is not None:
-                    extracted[alias] = value
-                    self.test_data[alias] = value
-                    self.logger.info(f"数据提取成功: {{alias}} = {{value}}")
-            except Exception as e:
-                self.logger.warning(f"数据提取失败: {{alias}} - {{str(e)}}")
-        
-        return extracted
+    # 添加导入语句
+    test_content += "import sys\n"
+    test_content += "import json\n"
+    test_content += "import time\n"
+    test_content += "import logging\n"
+    test_content += "from pathlib import Path\n"
+    test_content += "from typing import Dict, Any, Optional, List\n\n"
     
-    def _get_nested_value(self, data: Dict[str, Any], path: str) -> Any:
-        """按路径获取嵌套值"""
-        keys = path.split('.')
-        current = data
-        
-        for key in keys:
-            if isinstance(current, dict) and key in current:
-                current = current[key]
-            elif isinstance(current, list) and key.isdigit():
-                index = int(key)
-                if 0 <= index < len(current):
-                    current = current[index]
-                else:
-                    return None
-            else:
-                return None
-        
-        return current
+    test_content += "# 添加项目路径\n"
+    test_content += "project_root = Path(__file__).parent.parent\n"
+    test_content += "sys.path.insert(0, str(project_root))\n\n"
     
-    def substitute_variables(self, text: str) -> str:
-        """替换文本中的变量"""
-        if not isinstance(text, str):
-            return text
-            
-        for key, value in self.test_data.items():
-            placeholder = f"${{{{key}}}}"
-            if placeholder in text:
-                text = text.replace(placeholder, str(value))
-        
-        return text
+    test_content += "from src.core.base_test import BaseTest\n"
+    test_content += "from src.auth.auth_manager import AuthManager\n"
+    test_content += "from src.workflow.dependency_manager import DependencyManager, WorkflowResult\n\n\n"
     
-    def run_tests(self):
-        """运行所有测试"""
-        results = []
-        # 这里可以添加具体的测试调用
-        return results
+    # 构建类定义
+    test_content += "class " + class_name + "Test(BaseTest):\n"
+    test_content += '    """\n'
+    test_content += "    " + api_title + " 自动化测试类\n"
+    test_content += '    """\n\n'
+    
+    # __init__ 方法
+    test_content += "    def __init__(self, config_path: Optional[str] = None, auth_config: Optional[str] = None):\n"
+    test_content += "        super().__init__(config_path)\n\n"
+    
+    # 初始化认证管理器
+    if auth_manager:
+        test_content += "        # 初始化认证管理器\n"
+        test_content += "        self.auth_manager = AuthManager(auth_config)\n\n"
+    else:
+        test_content += "        # 初始化认证管理器\n"
+        test_content += "        self.auth_manager = None\n\n"
+    
+    # 初始化依赖管理器
+    if dependency_manager:
+        test_content += "        # 初始化依赖管理器\n"
+        test_content += "        self.dependency_manager = DependencyManager()\n\n"
+    else:
+        test_content += "        # 初始化依赖管理器\n"
+        test_content += "        self.dependency_manager = None\n\n"
+    
+    test_content += "        # 测试数据存储\n"
+    test_content += "        self.test_data = {}\n"
+    test_content += "        self.execution_order = []\n\n"
+    
+def _generate_helper_methods():
+    """生成帮助方法"""
+    helper_content = ""
+    helper_content += "    def setup_authentication(self, auth_name: str = \"default\") -> Dict[str, str]:\n"
+    helper_content += '        """设置认证"""\n'
+    helper_content += "        if not self.auth_manager:\n"
+    helper_content += "            return {}\n\n"
+    helper_content += "        try:\n"
+    helper_content += "            headers = self.auth_manager.get_auth_headers(auth_name)\n"
+    helper_content += "            self.logger.info(\"\u8ba4\u8bc1\u8bbe\u7f6e\u6210\u529f: \" + auth_name)\n"
+    helper_content += "            return headers\n"
+    helper_content += "        except Exception as e:\n"
+    helper_content += "            self.logger.error(\"\u8ba4\u8bc1\u8bbe\u7f6e\u5931\u8d25: \" + str(e))\n"
+    helper_content += "            return {}\n\n"
+    
+    helper_content += "    def extract_data(self, response_data: Dict[str, Any], extractions: Dict[str, str]) -> Dict[str, Any]:\n"
+    helper_content += '        """从响应中提取数据"""\n'
+    helper_content += "        extracted = {}\n\n"
+    helper_content += "        for alias, path in extractions.items():\n"
+    helper_content += "            try:\n"
+    helper_content += "                value = self._get_nested_value(response_data, path)\n"
+    helper_content += "                if value is not None:\n"
+    helper_content += "                    extracted[alias] = value\n"
+    helper_content += "                    self.test_data[alias] = value\n"
+    helper_content += "                    self.logger.info(\"\u6570\u636e\u63d0\u53d6\u6210\u529f: \" + alias + \" = \" + str(value))\n"
+    helper_content += "            except Exception as e:\n"
+    helper_content += "                self.logger.warning(\"\u6570\u636e\u63d0\u53d6\u5931\u8d25: \" + alias + \" - \" + str(e))\n\n"
+    helper_content += "        return extracted\n\n"
+    
+    helper_content += "    def _get_nested_value(self, data: Dict[str, Any], path: str) -> Any:\n"
+    helper_content += '        """按路径获取嵌套值"""\n'
+    helper_content += "        keys = path.split('.')\n"
+    helper_content += "        current = data\n\n"
+    helper_content += "        for key in keys:\n"
+    helper_content += "            if isinstance(current, dict) and key in current:\n"
+    helper_content += "                current = current[key]\n"
+    helper_content += "            elif isinstance(current, list) and key.isdigit():\n"
+    helper_content += "                index = int(key)\n"
+    helper_content += "                if 0 <= index < len(current):\n"
+    helper_content += "                    current = current[index]\n"
+    helper_content += "                else:\n"
+    helper_content += "                    return None\n"
+    helper_content += "            else:\n"
+    helper_content += "                return None\n\n"
+    helper_content += "        return current\n\n"
+    
+    helper_content += "    def substitute_variables(self, text: str) -> str:\n"
+    helper_content += '        """替换文本中的变量"""\n'
+    helper_content += "        if not isinstance(text, str):\n"
+    helper_content += "            return text\n\n"
+    helper_content += "        for key, value in self.test_data.items():\n"
+    helper_content += "            placeholder = \"${\" + key + \"}\"\n"
+    helper_content += "            if placeholder in text:\n"
+    helper_content += "                text = text.replace(placeholder, str(value))\n\n"
+    helper_content += "        return text\n\n"
+    
+    return helper_content
+
+
+def _generate_test_method(path, method_name, mock_sensitive_data):
+    """生成单个测试方法"""
+    path_url = path.get('path', '')
+    method_upper = path.get('method', 'GET').upper()
+    test_summary = path.get('summary', path_url)
+    auth_default = 'True' if '/login' not in path_url else 'False'
+    expected_status = path.get('expected_status', 200)
+    
+    test_method = "    def test_" + method_name + "(self, auth_required: bool = " + auth_default + "):\n"
+    test_method += '        """测试 ' + test_summary + '"""\n\n'
+    test_method += "        # 设置认证\n"
+    test_method += "        headers = {}\n"
+    test_method += "        if auth_required and self.auth_manager:\n"
+    test_method += "            headers.update(self.setup_authentication())\n\n"
+    test_method += "        # 替换URL中的变量\n"
+    test_method += "        url = self.substitute_variables(\"" + path_url + "\")\n\n"
+    test_method += "        # 准备请求参数\n"
+    test_method += "        params = {}\n"
+    test_method += "        request_body = None\n\n"
+    test_method += "        # TODO: 根据API规范设置实际参数\n"
+    
+    if mock_sensitive_data:
+        test_method += "        # 示例数据 (请根据实际需求修改)\n"
+    
+    test_method += "\n        # 发送请求\n"
+    test_method += "        result = self.make_request(\n"
+    test_method += "            method=\"" + method_upper + "\",\n"
+    test_method += "            url=url,\n"
+    test_method += "            params=params,\n"
+    test_method += "            headers=headers,\n"
+    test_method += "            json=request_body,\n"
+    test_method += "            test_name=\"test_" + method_name + "\"\n"
+    test_method += "        )\n\n"
+    test_method += "        # 基础断言\n"
+    test_method += "        self.assert_status_code(result, " + str(expected_status) + ")\n\n"
+    test_method += "        # 提取响应数据 (如果需要)\n"
+    test_method += "        extractions = {}\n"
+    test_method += "            # 示例: 'user_id': 'id', 'token': 'access_token'\n\n"
+    test_method += "        if result.success and result.response_data and extractions:\n"
+    test_method += "            extracted = self.extract_data(result.response_data, extractions)\n"
+    test_method += "            self.logger.info(\"提取的数据: \" + str(extracted))\n\n"
+    test_method += "        return result\n\n"
+    
+    return test_method
+    
+    # 添加 run_tests 方法
+    test_content += "    def run_tests(self):\n"
+    test_content += '        """运行所有测试"""\n'
+    test_content += "        results = []\n"
+    test_content += "        # 这里可以添加具体的测试调用\n"
+    test_content += "        return results\n\n\n"
+    
+    # 写入文件
+    test_file = output_path / 'test_api.py'
+    with open(test_file, 'w', encoding='utf-8') as f:
+        f.write(test_content)
 
 
 def _to_class_name(text: str) -> str:
@@ -671,31 +740,28 @@ def _generate_configs(output_path: Path, api_info: Dict[str, Any],
                      auth_manager: Optional[AuthManager], 
                      dependency_manager: Optional[DependencyManager]):
     """生成配置文件"""
-    config_content = f"""# {api_info.get('title', 'API')} 测试配置
-
-global:
-  timeout: 30
-  retry: 3
-  parallel: 4
-
-environments:
-  dev:
-    base_url: "http://localhost:8080"
-    headers:
-      Content-Type: "application/json"
-  
-  test:
-    base_url: "https://test-api.example.com"
-    headers:
-      Content-Type: "application/json"
-      Authorization: "Bearer test-token"
-  
-  prod:
-    base_url: "https://api.example.com"
-    headers:
-      Content-Type: "application/json"
-      Authorization: "Bearer prod-token"
-"""
+    api_title = api_info.get('title', 'API')
+    
+    config_content = "# " + api_title + " 测试配置\n\n"
+    config_content += "global:\n"
+    config_content += "  timeout: 30\n"
+    config_content += "  retry: 3\n"
+    config_content += "  parallel: 4\n\n"
+    config_content += "environments:\n"
+    config_content += "  dev:\n"
+    config_content += '    base_url: "http://localhost:8080"\n'
+    config_content += "    headers:\n"
+    config_content += '      Content-Type: "application/json"\n\n'
+    config_content += "  test:\n"
+    config_content += '    base_url: "https://test-api.example.com"\n'
+    config_content += "    headers:\n"
+    config_content += '      Content-Type: "application/json"\n'
+    config_content += '      Authorization: "Bearer test-token"\n\n'
+    config_content += "  prod:\n"
+    config_content += '    base_url: "https://api.example.com"\n'
+    config_content += "    headers:\n"
+    config_content += '      Content-Type: "application/json"\n'
+    config_content += '      Authorization: "Bearer prod-token"\n'
     
     config_file = output_path / 'config' / 'test_config.yaml'
     config_file.parent.mkdir(parents=True, exist_ok=True)
@@ -709,48 +775,49 @@ def _generate_documentation(output_path: Path, api_info: Dict[str, Any],
                            auth_manager: Optional[AuthManager], 
                            dependency_manager: Optional[DependencyManager]):
     """生成文档"""
-    doc_content = f"""# {api_info.get('title', 'API')} 自动化测试文档
-
-## 项目信息
-- **API名称**: {api_info.get('title', 'Unknown')}
-- **版本**: {api_info.get('version', '1.0.0')}
-- **描述**: {api_info.get('description', '无描述')}
-- **接口数量**: {len(paths)}
-- **生成时间**: {datetime.now().strftime('%Y-%m-%d %H:%M:%S')}
-
-## 功能特性
-- ✅ 多种认证方式支持
-- ✅ 依赖管理和工作流
-- ✅ 多格式测试生成
-- ✅ 自动化数据提取
-- ✅ 敏感数据Mock
-
-## 使用指南
-
-### 1. 配置认证
-```bash
-# 编辑认证配置
-vim config/auth.yaml
-
-# 设置环境变量
-export AUTH_API_AUTH_USERNAME=your_username
-export AUTH_API_AUTH_PASSWORD=your_password
-```
-
-### 2. 运行测试
-```bash
-# 运行Python测试
-python tests/test_api.py
-
-# 运行Postman集合
-newman run postman/collection.json
-
-# 运行cURL脚本
-bash curl/api_tests.sh
-```
-
-## 接口列表
-"""
+    api_title = api_info.get('title', 'API')
+    api_name = api_info.get('title', 'Unknown')
+    api_version = api_info.get('version', '1.0.0')
+    api_desc = api_info.get('description', '无描述')
+    paths_count = str(len(paths))
+    current_time = datetime.now().strftime('%Y-%m-%d %H:%M:%S')
+    
+    doc_content = "# " + api_title + " 自动化测试文档\n\n"
+    doc_content += "## 项目信息\n"
+    doc_content += "- **API名称**: " + api_name + "\n"
+    doc_content += "- **版本**: " + api_version + "\n"
+    doc_content += "- **描述**: " + api_desc + "\n"
+    doc_content += "- **接口数量**: " + paths_count + "\n"
+    doc_content += "- **生成时间**: " + current_time + "\n\n"
+    
+    doc_content += "## 功能特性\n"
+    doc_content += "- ✅ 多种认证方式支持\n"
+    doc_content += "- ✅ 依赖管理和工作流\n"
+    doc_content += "- ✅ 多格式测试生成\n"
+    doc_content += "- ✅ 自动化数据提取\n"
+    doc_content += "- ✅ 敏感数据Mock\n\n"
+    
+    doc_content += "## 使用指南\n\n"
+    doc_content += "### 1. 配置认证\n"
+    doc_content += "```bash\n"
+    doc_content += "# 编辑认证配置\n"
+    doc_content += "vim config/auth.yaml\n\n"
+    doc_content += "# 设置环境变量\n"
+    doc_content += "export AUTH_API_AUTH_USERNAME=your_username\n"
+    doc_content += "export AUTH_API_AUTH_PASSWORD=your_password\n"
+    doc_content += "```\n\n"
+    
+    doc_content += "### 2. 运行测试\n"
+    doc_content += "```bash\n"
+    doc_content += "# 运行Python测试\n"
+    doc_content += "python tests/test_api.py\n\n"
+    doc_content += "# 运行Postman集合\n"
+    doc_content += "newman run postman/collection.json\n\n"
+    doc_content += "# 运行cURL脚本\n"
+    doc_content += "bash curl/api_tests.sh\n"
+    doc_content += "```\n\n"
+    
+    doc_content += "## 接口列表\n"
     
     for i, path in enumerate(paths, 1):
         method = path.get('method', 'GET').upper()
