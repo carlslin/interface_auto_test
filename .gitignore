@@ -343,3 +343,6 @@ generated_scripts/
 user_data/
 personal_data/
 private_data/
+
+# 归档文档（不上传）
+ARCHIVED_DOCS.md
