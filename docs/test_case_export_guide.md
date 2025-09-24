@@ -115,7 +115,7 @@ print(f"Excel文件已导出: {excel_path}")
   "method": "POST",
   "url": "/api/auth/login",
   "headers": "Content-Type: application/json\nAuthorization: Bearer token",
-  "parameters": "email: user@example.com\npassword: password123",
+  "parameters": "email: user@example.com\npassword: your-password-here",
   "request_body": "{\n  \"email\": \"user@example.com\",\n  \"password\": \"password123\"\n}",
   "expected_status": 200,
   "expected_response": "{\n  \"token\": \"jwt_token\",\n  \"user_id\": 123\n}",

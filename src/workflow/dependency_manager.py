@@ -385,7 +385,7 @@ workflow:
       description: "获取访问令牌"
       request_body:
         username: "test_user"
-        password: "test_password"
+        password: "your-test-password"
       expected_status: 200
       validations:
         - type: "json_path"

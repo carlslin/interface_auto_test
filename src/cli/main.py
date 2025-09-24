@@ -1,5 +1,7 @@
 """
+=============================================================================
 接口自动化测试框架 - 主命令行入口
+=============================================================================
 
 这是整个框架的主命令行入口，提供统一的CLI界面和命令管理。
 支持从基础的API文档解析到高级的AI智能化功能的全部操作。
@@ -10,9 +12,11 @@
    - generate: 测试代码和文档生成
    - export: 测试用例导出不同格式
    - mock: Mock服务器和数据管理
+   - run: 测试执行和报告生成
+   - config: 配置管理和环境切换
 
 2. 高级模块：
-   - ai: AI智能化功能集合（架构优化后）
+   - ai: AI智能化功能集合（四层架构）
    - workflow: 工作流管理和自动化
    - auth: 认证和授权管理
 
@@ -25,20 +29,45 @@
 - 统一了错误处理和用户反馈，提供更友好的交互
 - 整合了数据生成和代码审查功能到测试生成器
 - 支持多级别的AI功能调用（basic/standard/comprehensive/enterprise）
+- 增强了安全性和性能监控功能
+- 完善了配置管理和环境切换
+
+AI四层架构：
+- L1 基础AI功能: 测试生成、报告生成、数据生成
+- L2 智能分析: AI补全管理器、统一协调
+- L3 智能决策: AI决策中心、自适应推荐
+- L4 智能交互: AI聊天助手、自然语言交互
 
 使用示例：
   # 基础功能
   python3 -m src.cli.main parse --input api.yaml
   python3 -m src.cli.main generate tests --input api.yaml --output tests/
+  python3 -m src.cli.main run tests --path tests/ --format html
   
   # 一键完成功能
   python3 -m src.cli.main generate auto-complete --input api.yaml
   
-  # AI智能化功能（优化后）
+  # AI智能化功能（四层架构）
   python3 -m src.cli.main ai test-generate --input api.yaml --output tests/
   python3 -m src.cli.main ai auto-complete --input api.yaml --completion-level comprehensive
   python3 -m src.cli.main ai decision --context-file context.json
+  python3 -m src.cli.main ai chat --message "请分析这个API的测试覆盖率"
+  
+  # 配置管理
+  python3 -m src.cli.main config show
+  python3 -m src.cli.main config switch test
+  
+  # Mock服务器
+  python3 -m src.cli.main mock start --port 8080
+  python3 -m src.cli.main mock add-route --method GET --path /api/users
+
+作者: 接口自动化测试框架团队
+版本: 1.0.0
+更新日期: 2024年12月
+=============================================================================
 """
+
+from __future__ import annotations
 
 import click
 import logging
@@ -72,12 +101,95 @@ except ImportError:
     AITestReporter: Optional[Any] = None
 
 
+def _check_ai_api_key(config: ConfigLoader) -> str:
+    """
+    统一的AI API Key检查方法
+    
+    检查配置中是否存在有效的DeepSeek API Key，如果不存在则提示用户设置。
+    这个方法被多个AI相关命令使用，确保统一的错误处理。
+    
+    Args:
+        config: 配置加载器实例，用于获取AI配置
+        
+    Returns:
+        str: 有效的API Key
+        
+    Raises:
+        SystemExit: 如果API Key不存在，程序会退出并显示设置提示
+        
+    使用场景:
+        - AI测试生成命令
+        - AI报告生成命令
+        - AI决策中心命令
+        - AI聊天助手命令
+    """
+    api_key = config.get('ai.deepseek_api_key')
+    if not api_key:
+        click.echo("❌ 请先设置AI API Key: python3 -m src.cli.main ai setup --api-key YOUR_KEY", err=True)
+        sys.exit(1)
+    return api_key
+
+
+def _validate_file_path(file_path: str, description: str = "文件") -> Path:
+    """
+    验证文件路径的有效性
+    
+    检查指定的文件路径是否存在，如果不存在则显示错误信息并退出程序。
+    这个方法提供了统一的文件路径验证逻辑。
+    
+    Args:
+        file_path: 要验证的文件路径，支持相对路径和绝对路径
+        description: 文件描述，用于错误信息显示，默认为"文件"
+        
+    Returns:
+        Path: 验证后的路径对象，可以安全使用
+        
+    Raises:
+        SystemExit: 如果文件不存在，程序会退出并显示错误信息
+        
+    使用场景:
+        - 输入文件验证（API文档、配置文件等）
+        - 输出目录验证
+        - 模板文件验证
+    """
+    path = Path(file_path)
+    if not path.exists():
+        click.echo(f"❌ {description}不存在: {file_path}", err=True)
+        sys.exit(1)
+    return path
+
+
+def _sanitize_input(data: Any) -> Any:
+    """
+    清理输入数据，防止潜在的安全问题
+    
+    对用户输入的数据进行清理，移除潜在的危险字符和恶意内容。
+    支持字符串、字典、列表等数据类型的递归清理。
+    
+    Args:
+        data: 输入数据
+        
+    Returns:
+        Any: 清理后的数据
+    """
+    import re
+    
+    if isinstance(data, str):
+        # 移除潜在的危险字符
+        return re.sub(r'[<>"\']', '', data)
+    elif isinstance(data, dict):
+        return {k: _sanitize_input(v) for k, v in data.items()}
+    elif isinstance(data, list):
+        return [_sanitize_input(item) for item in data]
+    return data
+
+
 @click.group()
 @click.option('--config', '-c', type=click.Path(), help='配置文件路径')
 @click.option('--env', '-e', default='dev', help='环境名称')
 @click.option('--debug', is_flag=True, help='启用调试模式')
 @click.pass_context
-def cli(ctx, config, env, debug):
+def cli(ctx: click.Context, config: str | None, env: str, debug: bool) -> None:
     """
     接口自动化测试框架命令行工具 - 主入口
     
@@ -120,17 +232,68 @@ def cli(ctx, config, env, debug):
 @cli.group()
 @click.pass_context
 def mock(ctx):
-    """Mock服务器相关命令"""
+    """
+    Mock服务器管理命令组
+    
+    提供Mock服务器的完整管理功能，包括启动、停止、路由管理等。
+    Mock服务器用于模拟API响应，支持离线开发和测试。
+    
+    主要功能：
+    - 启动和停止Mock服务器
+    - 动态添加和删除路由
+    - 路由配置管理
+    - 服务器状态监控
+    
+    使用示例：
+        # 启动Mock服务器
+        autotest mock start --port 8080
+        
+        # 添加路由
+        autotest mock add-route --method GET --path /api/users
+        
+        # 查看路由列表
+        autotest mock list-routes
+        
+        # 停止服务器
+        autotest mock stop
+    """
     pass
 
 
 @mock.command()
-@click.option('--port', '-p', type=int, help='服务器端口')
-@click.option('--host', '-h', default='localhost', help='服务器主机')
-@click.option('--routes-file', '-f', type=click.Path(exists=True), help='路由配置文件')
+@click.option('--port', '-p', type=int, help='服务器端口，默认从配置读取')
+@click.option('--host', '-h', default='localhost', help='服务器主机地址')
+@click.option('--routes-file', '-f', type=click.Path(exists=True), help='路由配置文件路径')
+@click.option('--enable-cors', is_flag=True, help='启用CORS支持')
+@click.option('--debug', is_flag=True, help='启用调试模式')
 @click.pass_context
-def start(ctx, port, host, routes_file):
-    """启动Mock服务器"""
+def start(ctx, port, host, routes_file, enable_cors, debug):
+    """
+    启动Mock服务器
+    
+    启动一个Mock服务器来模拟API响应，支持动态路由配置和CORS。
+    服务器启动后会在后台运行，可以通过其他命令进行管理。
+    
+    Args:
+        port: 服务器端口号，如果不指定则从配置文件读取
+        host: 服务器主机地址，默认为localhost
+        routes_file: 路由配置文件路径，支持YAML和JSON格式
+        enable_cors: 是否启用CORS支持，用于前端开发
+        debug: 是否启用调试模式，输出详细日志
+    
+    使用示例：
+        # 基本启动
+        autotest mock start
+        
+        # 指定端口和主机
+        autotest mock start --port 8080 --host 0.0.0.0
+        
+        # 加载路由配置
+        autotest mock start --routes-file routes.yaml
+        
+        # 启用CORS和调试模式
+        autotest mock start --enable-cors --debug
+    """
     config = ctx.obj['config']
     
     # 构建服务器配置
@@ -234,8 +397,10 @@ def tests(ctx, input, output, format, template, export_format):
 @click.option('--input', '-i', required=True, help='API文档文件路径或URL')
 @click.option('--workspace', '-w', type=click.Path(), default='./auto_test_project', help='工作区路径')
 @click.option('--mock-port', type=int, default=8080, help='Mock服务器端口')
+@click.option('--test-mode', '-m', type=click.Choice(['auto', 'mock', 'real']), default='auto', help='测试模式')
+@click.option('--skip-mock', is_flag=True, help='跳过Mock模式，直接使用真实接口')
 @click.pass_context
-def auto_complete(ctx, input, workspace, mock_port):
+def auto_complete(ctx, input, workspace, mock_port, test_mode, skip_mock):
     """🤖 一键全自动完成：从API文档到完整测试系统"""
     import shutil
     
@@ -297,12 +462,37 @@ def auto_complete(ctx, input, workspace, mock_port):
         
         # 第四步：生成配置文件
         click.echo("\n⚙️ 第四步：生成配置文件")
-        config_content = f'''# {project_name} 项目配置文件
+        
+        # 根据测试模式生成不同的配置
+        if test_mode == "real":
+            config_content = f'''# {project_name} 项目配置文件
+# 测试模式: 真实接口模式
 
 global:
   timeout: 30
   retry: 3
   parallel: 4
+  test_mode: "real"  # 强制使用真实接口
+  mock_fallback: false  # 禁用Mock回退
+
+environments:
+  dev:
+    base_url: "http://your-dev-api.example.com"  # 请修改为实际的API地址
+    headers:
+      Content-Type: "application/json"
+      Authorization: "Bearer your-actual-token"  # 请修改为实际的认证token
+    timeout: 30
+    test_mode: "real"
+'''
+        elif test_mode == "mock":
+            config_content = f'''# {project_name} 项目配置文件
+# 测试模式: Mock模式
+
+global:
+  timeout: 30
+  retry: 3
+  parallel: 4
+  test_mode: "mock"  # 强制使用Mock模式
 
 environments:
   dev:
@@ -310,11 +500,53 @@ environments:
     headers:
       Content-Type: "application/json"
     timeout: 30
+    test_mode: "mock"
+  
+  mock:
+    base_url: "http://localhost:{mock_port}"
+    headers:
+      Content-Type: "application/json"
+    timeout: 10
+    test_mode: "mock"
 
 mock:
   port: {mock_port}
   host: "localhost"
   enable_cors: true
+  auto_start: true  # 自动启动Mock服务器
+'''
+        else:  # auto 模式
+            config_content = f'''# {project_name} 项目配置文件
+# 测试模式: 自动选择模式
+
+global:
+  timeout: 30
+  retry: 3
+  parallel: 4
+  test_mode: "auto"  # 自动选择模式
+  mock_fallback: true  # 允许Mock回退
+
+environments:
+  dev:
+    base_url: "http://your-dev-api.example.com"  # 请修改为实际的API地址
+    headers:
+      Content-Type: "application/json"
+      Authorization: "Bearer your-actual-token"  # 请修改为实际的认证token
+    timeout: 30
+    test_mode: "auto"
+  
+  mock:
+    base_url: "http://localhost:{mock_port}"
+    headers:
+      Content-Type: "application/json"
+    timeout: 10
+    test_mode: "mock"
+
+mock:
+  port: {mock_port}
+  host: "localhost"
+  enable_cors: true
+  auto_start: false  # 需要时才启动Mock服务器
 '''
         
         config_file = workspace_path / 'config' / 'default.yaml'
@@ -331,52 +563,154 @@ mock:
         exports_output = workspace_path / 'exports'
         _export_test_cases(paths, exports_output, api_info, 'excel')
         
-        # 第七步：生成Mock配置
-        click.echo("\n🎭 第七步：生成Mock配置")
-        mock_routes = {"routes": []}
-        for path in paths[:5]:  # 只生成前5个接口
-            route = {
-                "method": path.get('method', 'GET').upper(),
-                "path": path.get('path', '/'),
-                "response": {
-                    "status_code": 200,
-                    "body": {"message": "Mock response", "data": {}}
+        # 第七步：根据模式生成Mock配置
+        if test_mode != "real":
+            click.echo("\n🎭 第七步：生成Mock配置")
+            mock_routes = {"routes": []}
+            for path in paths[:5]:  # 只生成前5个接口
+                route = {
+                    "method": path.get('method', 'GET').upper(),
+                    "path": path.get('path', '/'),
+                    "response": {
+                        "status_code": 200,
+                        "body": {"message": "Mock response", "data": {}}
+                    }
                 }
-            }
-            mock_routes["routes"].append(route)
+                mock_routes["routes"].append(route)
+            
+            mock_file = workspace_path / 'config' / 'mock_routes.json'
+            with open(mock_file, 'w', encoding='utf-8') as f:
+                json.dump(mock_routes, f, ensure_ascii=False, indent=2)
+            
+            click.echo(f"✅ Mock配置已生成: {mock_file}")
+        else:
+            click.echo("\n⚠️  第七步：跳过Mock配置（真实模式）")
         
-        mock_file = workspace_path / 'config' / 'mock_routes.json'
-        with open(mock_file, 'w', encoding='utf-8') as f:
-            json.dump(mock_routes, f, ensure_ascii=False, indent=2)
-        
-        # 第八步：生成README
+        # 第八步：生成项目文档
         click.echo("\n📚 第八步：生成项目文档")
+        
+        # 根据测试模式生成不同的使用指南
+        if test_mode == "real":
+            usage_guide = f'''
+## 快速开始 (真实接口模式)
+
+1. 配置真实接口地址：
+```bash
+# 编辑 config/default.yaml 中的 base_url 和认证信息
+vim config/default.yaml
+```
+
+2. 运行测试：
+```bash
+python tests/generated/test_*.py
+```
+
+3. 查看测试报告：
+```bash
+open reports/
+```
+
+⚠️  **注意**: 当前配置为真实接口模式，不会使用Mock服务器。
+'''
+        elif test_mode == "mock":
+            usage_guide = f'''
+## 快速开始 (Mock模式)
+
+1. 启动Mock服务器：
+```bash
+autotest mock start --port {mock_port} --routes-file config/mock_routes.json
+```
+
+2. 运行测试：
+```bash
+python tests/generated/test_*.py
+```
+
+3. 查看测试报告：
+```bash
+open reports/
+```
+
+🎭 **Mock模式**: 所有测试都将使用Mock服务器，无需真实接口。
+'''
+        else:  # auto 模式
+            usage_guide = f'''
+## 快速开始 (智能模式)
+
+1. 配置真实接口地址（可选）：
+```bash
+# 编辑 config/default.yaml 中的 base_url 和认证信息
+vim config/default.yaml
+```
+
+2. 启动Mock服务器（备用）：
+```bash
+autotest mock start --port {mock_port} --routes-file config/mock_routes.json
+```
+
+3. 运行测试：
+```bash
+python tests/generated/test_*.py
+```
+
+4. 查看测试报告：
+```bash
+open reports/
+```
+
+✨ **智能模式**: 系统会自动检测真实接口可用性，智能选择最佳测试模式。
+
+## 模式管理
+
+查看当前模式：
+```bash
+autotest config show-mode
+```
+
+切换模式：
+```bash
+# 切换到Mock模式
+autotest config set-mode --mode mock
+
+# 切换到真实模式
+autotest config set-mode --mode real
+
+# 切换到自动模式
+autotest config set-mode --mode auto
+```
+
+测试连通性：
+```bash
+autotest config test-connectivity
+```
+'''
+        
         readme_content = f'''# {project_name} 自动化测试项目
 
 ## 项目信息
 - API名称: {api_info.get('title', 'Unknown')}
 - 版本: {api_info.get('version', '1.0.0')}
 - 接口数量: {len(paths)}
+- 测试模式: {test_mode}
 - 生成时间: {datetime.now().strftime('%Y-%m-%d %H:%M:%S')}
-
-## 快速开始
-
-1. 运行测试：
-```bash
-python tests/generated/test_*.py
-```
-
-2. 启动Mock服务器：
-```bash
-autotest mock start --port {mock_port} --routes-file config/mock_routes.json
-```
-
+{usage_guide}
 ## 目录结构
 - config/: 配置文件
 - specs/: API规格文档
 - tests/: 测试文件
 - exports/: 导出的测试用例
 '''
+        if test_mode != "real":
+            readme_content += "- config/mock_routes.json: Mock服务器配置\n"
+        
+        readme_content += "\n## 模式说明\n\n"
+        
+        if test_mode == "real":
+            readme_content += "✅ **真实模式**: 直接访问真实的API接口，适用于集成测试和生产环境。\n"
+        elif test_mode == "mock":
+            readme_content += "🎭 **Mock模式**: 使用模拟API服务器，适用于开发阶段和离线测试。\n"
+        else:
+            readme_content += "✨ **智能模式**: 自动检测真实接口可用性，智能选择最佳测试模式。\n"
         
         readme_file = workspace_path / 'README.md'
         with open(readme_file, 'w', encoding='utf-8') as f:
@@ -389,13 +723,27 @@ autotest mock start --port {mock_port} --routes-file config/mock_routes.json
         click.echo(f"💼 项目位置: {workspace_path.absolute()}")
         click.echo(f"📁 测试文件: {workspace_path}/tests/generated/")
         click.echo(f"📤 测试用例: {workspace_path}/exports/")
-        click.echo(f"🎭 Mock配置: {workspace_path}/config/mock_routes.json")
+        click.echo(f"🎯 测试模式: {test_mode}")
+        
+        if test_mode != "real":
+            click.echo(f"🎭 Mock配置: {workspace_path}/config/mock_routes.json")
         
         click.echo("\n🛠️ 下一步操作:")
         click.echo(f"1. 进入项目: cd {workspace_path}")
-        click.echo(f"2. 启动Mock: autotest mock start --port {mock_port} --routes-file config/mock_routes.json")
-        click.echo("3. 运行测试: python tests/generated/test_*.py")
+        
+        if test_mode == "real":
+            click.echo("2. 配置真实接口地址: vim config/default.yaml")
+            click.echo("3. 运行测试: python tests/generated/test_*.py")
+        elif test_mode == "mock":
+            click.echo(f"2. 启动Mock: autotest mock start --port {mock_port} --routes-file config/mock_routes.json")
+            click.echo("3. 运行测试: python tests/generated/test_*.py")
+        else:  # auto 模式
+            click.echo("2. 查看模式状态: autotest config show-mode")
+            click.echo("3. 测试连通性: autotest config test-connectivity")
+            click.echo("4. 运行测试: python tests/generated/test_*.py")
+        
         click.echo("4. 查看文档: cat README.md")
+        click.echo("📚 温馨提示: 查看README.md了解详细使用指南")
         
     except Exception as e:
         click.echo(f"\n❌ 全自动完成失败: {str(e)}", err=True)
@@ -951,6 +1299,171 @@ def template(ctx, output):
         sys.exit(1)
 
 
+@config.command()
+@click.option('--mode', '-m', type=click.Choice(['auto', 'mock', 'real']), required=True, help='测试模式')
+@click.option('--environment', '-e', help='指定环境（可选，默认当前环境）')
+@click.pass_context
+def set_mode(ctx, mode, environment):
+    """设置测试模式"""
+    config = ctx.obj['config']
+    
+    target_env = environment or config.current_env
+    
+    click.echo(f"🔧 设置环境 '{target_env}' 的测试模式为: {mode}")
+    
+    try:
+        if environment:
+            # 临时切换环境设置模式
+            original_env = config.current_env
+            config.set_environment(target_env)
+            config.set_test_mode(mode)
+            config.set_environment(original_env)
+        else:
+            config.set_test_mode(mode)
+            
+        config.save_config()
+        
+        click.echo("✅ 测试模式设置成功")
+        
+        # 显示当前有效配置
+        effective_url = config.get_effective_base_url()
+        click.echo(f"📍 当前有效URL: {effective_url}")
+        
+        if mode == "auto":
+            click.echo("🤖 自动模式: 将根据真实接口可用性智能选择")
+        elif mode == "mock":
+            click.echo("🎭 Mock模式: 强制使用Mock服务器")
+        elif mode == "real":
+            click.echo("🌍 真实模式: 强制使用真实接口")
+            
+    except Exception as e:
+        click.echo(f"❌ 设置失败: {e}", err=True)
+        sys.exit(1)
+
+
+@config.command()
+@click.pass_context
+def show_mode(ctx):
+    """显示当前测试模式信息"""
+    config = ctx.obj['config']
+    
+    click.echo("🔍 测试模式信息")
+    click.echo("=" * 50)
+    
+    # 当前环境信息
+    click.echo(f"📋 当前环境: {config.current_env}")
+    click.echo(f"🎯 测试模式: {config.get_test_mode()}")
+    click.echo(f"🔄 Mock回退: {'启用' if config.is_mock_fallback_enabled() else '禁用'}")
+    
+    # URL信息
+    click.echo(f"\n🌐 URL信息:")
+    click.echo(f"  真实接口: {config.get_base_url()}")
+    click.echo(f"  Mock服务: {config.get_mock_url()}")
+    click.echo(f"  有效URL: {config.get_effective_base_url()}")
+    
+    # 判断当前会使用哪种模式
+    if config.should_use_mock():
+        click.echo("\n🎭 当前将使用: Mock模式")
+    else:
+        click.echo("\n🌍 当前将使用: 真实接口模式")
+    
+    # 显示所有环境的模式设置
+    click.echo("\n📊 所有环境的模式设置:")
+    for env in config.get_all_environments():
+        env_mode = config.get(f"environments.{env}.test_mode") or config.get("global.test_mode", "auto")
+        env_fallback = config.get(f"environments.{env}.mock_fallback")
+        if env_fallback is None:
+            env_fallback = config.get("global.mock_fallback", True)
+        
+        status = "🟢" if env == config.current_env else "⚪"
+        fallback_text = "允许回退" if env_fallback else "禁止回退"
+        click.echo(f"  {status} {env}: {env_mode} ({fallback_text})")
+
+
+@config.command()
+@click.option('--environment', '-e', help='指定环境进行测试（可选）')
+@click.pass_context
+def test_connectivity(ctx, environment):
+    """测试接口连通性"""
+    config = ctx.obj['config']
+    
+    original_env = None
+    if environment:
+        original_env = config.current_env
+        config.set_environment(environment)
+    
+    click.echo(f"🔍 测试环境 '{config.current_env}' 的接口连通性")
+    click.echo("=" * 50)
+    
+    import requests
+    import time
+    
+    # 测试真实接口
+    real_url = config.get_base_url()
+    click.echo(f"\n🌍 测试真实接口: {real_url}")
+    
+    if real_url:
+        health_endpoints = [
+            f"{real_url}/health",
+            f"{real_url}/api/health", 
+            f"{real_url}/ping",
+            f"{real_url}/"
+        ]
+        
+        real_available = False
+        for endpoint in health_endpoints:
+            try:
+                start_time = time.time()
+                response = requests.get(endpoint, timeout=5)
+                response_time = time.time() - start_time
+                
+                if response.status_code < 500:
+                    click.echo(f"  ✅ {endpoint} - {response.status_code} ({response_time:.2f}s)")
+                    real_available = True
+                    break
+                else:
+                    click.echo(f"  ⚠️  {endpoint} - {response.status_code} (服务器错误)")
+            except requests.exceptions.Timeout:
+                click.echo(f"  ❌ {endpoint} - 超时")
+            except requests.exceptions.RequestException as e:
+                click.echo(f"  ❌ {endpoint} - {type(e).__name__}")
+        
+        if not real_available:
+            click.echo("  💔 真实接口不可用")
+    else:
+        click.echo("  ⚠️  未配置真实接口URL")
+        real_available = False
+    
+    # 测试Mock服务器
+    mock_url = config.get_mock_url()
+    click.echo(f"\n🎭 测试Mock服务器: {mock_url}")
+    
+    mock_available = False
+    try:
+        start_time = time.time()
+        response = requests.get(f"{mock_url}/", timeout=3)
+        response_time = time.time() - start_time
+        
+        click.echo(f"  ✅ Mock服务器可用 - {response.status_code} ({response_time:.2f}s)")
+        mock_available = True
+    except requests.exceptions.RequestException as e:
+        click.echo(f"  ❌ Mock服务器不可用 - {type(e).__name__}")
+    
+    # 给出建议
+    click.echo("\n💡 建议:")
+    if real_available and mock_available:
+        click.echo("  ✨ 建议使用 'auto' 模式，系统将智能选择")
+    elif real_available:
+        click.echo("  🌍 建议使用 'real' 模式，真实接口可用")
+    elif mock_available:
+        click.echo("  🎭 建议使用 'mock' 模式，仅Mock服务器可用")
+    else:
+        click.echo("  ⚠️  所有服务都不可用，请检查配置和网络")
+    
+    if original_env:
+        config.set_environment(original_env)
+
+
 @cli.group()
 @click.pass_context
 def data(ctx):
@@ -1068,6 +1581,10 @@ if AI_AVAILABLE:
     try:
         from .ai_wizard_cmd import ai_wizard
         cli.add_command(ai_wizard, name='ai-wizard')
+        
+        # 区块链功能
+        from .blockchain_cmd import blockchain
+        cli.add_command(blockchain, name='blockchain')
     except ImportError:
         pass
     
@@ -1097,20 +1614,18 @@ if AI_AVAILABLE:
     
     @ai.command()
     @click.option('--input', '-i', type=click.Path(exists=True), required=True, help='API文档文件')
+    @click.option('--endpoint', '-e', required=True, help='接口路径（如 /api/users）')
+    @click.option('--method', '-m', required=True, type=click.Choice(['GET', 'POST', 'PUT', 'DELETE', 'PATCH']), help='HTTP方法')
     @click.option('--output', '-o', type=click.Path(), required=True, help='输出目录')
     @click.option('--business-context', help='业务上下文描述')
-    @click.option('--test-types', multiple=True, default=['functional'], help='测试类型')
+    @click.option('--scenarios', multiple=True, help='指定特定的测试场景类型')
     @click.pass_context
-    def generate_tests(ctx, input, output, business_context, test_types):
-        """使用AI生成智能测试用例"""
+    def generate_comprehensive_scenarios(ctx, input, endpoint, method, output, business_context, scenarios):
+        """🤖 AI生成全面的测试场景（包括各种错误、空值、服务失效等）"""
         config = ctx.obj['config']
-        api_key = config.get('ai.deepseek_api_key')
+        api_key = _check_ai_api_key(config)
         
-        if not api_key:
-            click.echo("❌ 请先设置AI API Key: interface-test ai setup --api-key YOUR_KEY", err=True)
-            sys.exit(1)
-        
-        click.echo(f"🤖 使用AI生成测试用例: {input}")
+        click.echo(f"🤖 使用AI生成全面测试场景: {method} {endpoint}")
         
         try:
             # 初始化AI客户端
@@ -1124,19 +1639,20 @@ if AI_AVAILABLE:
                 click.echo("❌ API文档解析失败", err=True)
                 sys.exit(1)
             
-            api_info = parser.get_api_info()
             api_spec = parser.get_full_spec()
+            api_info = parser.get_api_info()
             
             click.echo(f"✅ API文档解析成功: {api_info['title']}")
             
-            # 生成AI测试用例
-            result = generator.generate_comprehensive_tests(
+            # 生成全面测试场景
+            result = generator.generate_comprehensive_test_scenarios(
                 api_spec=api_spec,
-                business_context=business_context,
-                test_requirements=list(test_types)
+                endpoint_path=endpoint,
+                method=method.upper(),
+                business_context=business_context
             )
             
-            if 'error' in result:
+            if not result.get('success', True) and 'error' in result:
                 click.echo(f"❌ AI生成失败: {result['error']}", err=True)
                 sys.exit(1)
             
@@ -1144,21 +1660,74 @@ if AI_AVAILABLE:
             output_path = Path(output)
             output_path.mkdir(parents=True, exist_ok=True)
             
-            output_file = output_path / f"ai_generated_tests_{api_info['title'].replace(' ', '_')}.json"
-            with open(output_file, 'w', encoding='utf-8') as f:
+            # 保存JSON结果
+            json_file = output_path / f"comprehensive_test_scenarios_{method.lower()}_{endpoint.replace('/', '_').strip('_')}.json"
+            with open(json_file, 'w', encoding='utf-8') as f:
                 json.dump(result, f, ensure_ascii=False, indent=2)
             
-            click.echo(f"✅ AI测试用例已生成: {output_file}")
+            click.echo(f"✅ 全面测试场景已生成: {json_file}")
+            
+            # 生成可执行的测试代码
+            if 'test_scenarios' in result and result['test_scenarios']:
+                click.echo("\n📝 正在生成可执行的测试代码...")
+                
+                # 收集所有测试用例
+                all_test_cases = []
+                for scenario_type, scenario_data in result['test_scenarios'].items():
+                    if isinstance(scenario_data.get('test_cases'), list):
+                        for case in scenario_data['test_cases']:
+                            case['scenario_type'] = scenario_type
+                            case['category'] = scenario_data.get('category', 'Other')
+                            case['priority'] = scenario_data.get('priority', 'Medium')
+                            all_test_cases.append(case)
+                
+                if all_test_cases:
+                    code_result = generator.generate_executable_test_code(
+                        test_cases=all_test_cases,
+                        framework="pytest",
+                        language="python"
+                    )
+                    
+                    if code_result.get('success'):
+                        # 保存测试代码
+                        code_file = output_path / f"test_{method.lower()}_{endpoint.replace('/', '_').strip('_')}_comprehensive.py"
+                        with open(code_file, 'w', encoding='utf-8') as f:
+                            f.write(code_result['code'])
+                        
+                        click.echo(f"✅ 测试代码已生成: {code_file}")
+                    else:
+                        click.echo(f"⚠️  测试代码生成失败: {code_result.get('error', '未知错误')}")
             
             # 显示统计信息
             summary = result.get('summary', {})
             click.echo(f"\n📊 生成统计:")
-            click.echo(f"  总测试数: {summary.get('total_tests', 0)}")
-            click.echo(f"  API接口数: {summary.get('api_endpoints', 0)}")
-            click.echo(f"  测试类型: {', '.join(test_types)}")
+            click.echo(f"  总场景数: {summary.get('total_scenarios', 0)}")
+            click.echo(f"  生成用例数: {summary.get('generated_cases', 0)}")
+            click.echo(f"  目标接口: {result.get('endpoint', f'{method} {endpoint}')}")
+            
+            # 显示各场景的统计
+            if 'test_scenarios' in result:
+                click.echo("\n📋 场景详情:")
+                for scenario_type, scenario_data in result['test_scenarios'].items():
+                    count = scenario_data.get('count', 0)
+                    priority = scenario_data.get('priority', 'Medium')
+                    category = scenario_data.get('category', 'Other')
+                    description = scenario_data.get('description', scenario_type)
+                    
+                    status_icon = "✅" if count > 0 else "❌"
+                    click.echo(f"  {status_icon} {description}: {count}个用例 (优先级: {priority}, 分类: {category})")
+            
+            click.echo("\n💡 使用建议:")
+            click.echo(f"1. 查看JSON结果: cat {json_file}")
+            if Path(output_path / f"test_{method.lower()}_{endpoint.replace('/', '_').strip('_')}_comprehensive.py").exists():
+                click.echo(f"2. 运行测试: pytest {output_path / f'test_{method.lower()}_{endpoint.replace("/", "_").strip("_")}_comprehensive.py'} -v")
+            click.echo("3. 根据实际情况调整测试参数和断言")
             
         except Exception as e:
-            click.echo(f"❌ AI功能执行失败: {e}", err=True)
+            click.echo(f"❌ AI全面测试场景生成失败: {e}", err=True)
+            if ctx.obj.get('debug'):
+                import traceback
+                click.echo(traceback.format_exc(), err=True)
             sys.exit(1)
     
     @ai.command()
@@ -1170,11 +1739,7 @@ if AI_AVAILABLE:
     def review_code(ctx, file, language, output, format):
         """使用AI进行代码审查"""
         config = ctx.obj['config']
-        api_key = config.get('ai.deepseek_api_key')
-        
-        if not api_key:
-            click.echo("❌ 请先设置AI API Key: interface-test ai setup --api-key YOUR_KEY", err=True)
-            sys.exit(1)
+        api_key = _check_ai_api_key(config)
         
         click.echo(f"🤖 使用AI审查代码: {file}")
         
@@ -1231,11 +1796,7 @@ if AI_AVAILABLE:
     def generate_data(ctx, schema, count, type, output, business_context):
         """使用AI生成测试数据"""
         config = ctx.obj['config']
-        api_key = config.get('ai.deepseek_api_key')
-        
-        if not api_key:
-            click.echo("❌ 请先设置AI API Key: interface-test ai setup --api-key YOUR_KEY", err=True)
-            sys.exit(1)
+        api_key = _check_ai_api_key(config)
         
         click.echo(f"🤖 使用AI生成{type}测试数据")
         
@@ -1300,10 +1861,127 @@ if AI_AVAILABLE:
         except Exception as e:
             click.echo(f"❌ AI数据生成失败: {e}", err=True)
             sys.exit(1)
+    
+    @ai.command()
+    @click.option('--test-file', '-f', type=click.Path(exists=True), required=True, help='现有测试文件路径')
+    @click.option('--api-spec', '-s', type=click.Path(exists=True), required=True, help='API规范文件')
+    @click.option('--output', '-o', type=click.Path(), required=True, help='输出目录')
+    @click.option('--add-edge-cases/--no-edge-cases', default=True, help='添加边界情况测试')
+    @click.option('--add-error-handling/--no-error-handling', default=True, help='添加错误处理测试')
+    @click.option('--add-security/--no-security', default=True, help='添加安全测试')
+    @click.option('--improve-assertions/--no-improve-assertions', default=True, help='改进断言')
+    @click.option('--optimize-data/--no-optimize-data', default=True, help='优化测试数据')
+    @click.pass_context
+    def enhance_traditional_tests(ctx, test_file, api_spec, output, add_edge_cases, add_error_handling, add_security, improve_assertions, optimize_data):
+        """🚀 AI增强传统测试，添加各种错误、空值、服务失效等测试场景"""
+        config = ctx.obj['config']
+        api_key = _check_ai_api_key(config)
+        
+        click.echo(f"🚀 使用AI增强传统测试: {test_file}")
+        
+        try:
+            # 初始化AI客户端
+            from ..ai import DeepSeekClient, AITestGenerator  # type: ignore
+            client = DeepSeekClient(api_key)  # type: ignore
+            generator = AITestGenerator(client)  # type: ignore
+            
+            # 解析API规范
+            parser = OpenAPIParser()
+            if not parser.load_from_file(api_spec):
+                click.echo("❌ API规范解析失败", err=True)
+                sys.exit(1)
+            
+            api_spec_data = parser.get_full_spec()
+            api_info = parser.get_api_info()
+            
+            click.echo(f"✅ API规范解析成功: {api_info['title']}")
+            
+            # 设置增强选项
+            enhancement_options = {
+                "add_edge_cases": add_edge_cases,
+                "add_error_handling": add_error_handling, 
+                "add_security_tests": add_security,
+                "improve_assertions": improve_assertions,
+                "optimize_test_data": optimize_data,
+                "add_data_validation": True,
+                "add_performance_checks": True,
+                "add_documentation": True,
+                "refactor_structure": False
+            }
+            
+            click.echo("⚡ 正在分析现有测试代码...")
+            
+            # 使用AI增强传统测试
+            result = generator.enhance_traditional_tests(
+                existing_test_file_path=test_file,
+                api_spec=api_spec_data,
+                enhancement_options=enhancement_options
+            )
+            
+            if not result.get('success'):
+                click.echo(f"❌ AI增强失败: {result.get('error', '未知错误')}", err=True)
+                sys.exit(1)
+            
+            # 保存结果
+            output_path = Path(output)
+            output_path.mkdir(parents=True, exist_ok=True)
+            
+            # 保存增强后的测试代码
+            original_filename = Path(test_file).stem
+            enhanced_file = output_path / f"{original_filename}_enhanced.py"
+            with open(enhanced_file, 'w', encoding='utf-8') as f:
+                f.write(result['enhanced_code'])
+            
+            # 保存分析和建议报告
+            report_file = output_path / f"{original_filename}_enhancement_report.md"
+            with open(report_file, 'w', encoding='utf-8') as f:
+                f.write(f"# {original_filename} 测试增强报告\n\n")
+                f.write(f"## 原始文件分析\n\n{result['original_analysis']}\n\n")
+                f.write(f"## 增强建议\n\n{result['enhancement_suggestions']}\n\n")
+                f.write(f"## 增强选项\n\n")
+                for option, enabled in result['enhancement_options'].items():
+                    status = "✅" if enabled else "❌"
+                    f.write(f"- {status} {option}: {'\u542f\u7528' if enabled else '\u7981\u7528'}\n")
+                f.write(f"\n## 统计信息\n\n")
+                f.write(f"- 改进项数量: {result['improvements_count']}\n")
+                f.write(f"- 原始文件: {result['file_path']}\n")
+                f.write(f"- 增强文件: {enhanced_file}\n")
+            
+            # 保存完整的JSON结果
+            json_file = output_path / f"{original_filename}_enhancement_result.json"
+            with open(json_file, 'w', encoding='utf-8') as f:
+                json.dump(result, f, ensure_ascii=False, indent=2)
+            
+            click.echo(f"\n✅ AI增强成功完成！")
+            click.echo(f"📝 增强后的测试文件: {enhanced_file}")
+            click.echo(f"📄 增强报告: {report_file}")
+            click.echo(f"📊 JSON结果: {json_file}")
+            
+            # 显示统计信息
+            click.echo(f"\n📊 增强统计:")
+            click.echo(f"  改进项数量: {result['improvements_count']}")
+            click.echo(f"  启用的增强选项:")
+            for option, enabled in result['enhancement_options'].items():
+                if enabled:
+                    click.echo(f"    ✅ {option}")
+            
+            click.echo(f"\n💡 使用建议:")
+            click.echo(f"1. 查看增强报告: cat {report_file}")
+            click.echo(f"2. 比较原始和增强文件: diff {test_file} {enhanced_file}")
+            click.echo(f"3. 运行增强后的测试: pytest {enhanced_file} -v")
+            click.echo("4. 根据实际情况调整测试代码")
+            
+        except Exception as e:
+            click.echo(f"❌ AI增强传统测试失败: {e}", err=True)
+            if ctx.obj.get('debug'):
+                import traceback
+                click.echo(traceback.format_exc(), err=True)
+            sys.exit(1)
 else:
     # 如果AI不可用，提供友好的错误信息
     @cli.group()
-    def ai():
+    @click.pass_context
+    def ai(ctx):
         """🤖 AI智能功能（不可用）"""
         click.echo("❌ AI功能不可用，请安装相关依赖")
         click.echo("💡 安装命令: pip install requests")
@@ -1539,11 +2217,7 @@ def _generate_example_from_schema(schema):
 def ai_smart_test(ctx, input, workspace, execute, data_count, business_context, test_types, parallel):
     """🤖 AI智能测试：根据接口情况结合AI生成测试数据和测试用例并执行"""
     config = ctx.obj['config']
-    api_key = config.get('ai.deepseek_api_key')
-    
-    if not api_key:
-        click.echo("❌ 请先设置AI API Key: python3 -m src.cli.main ai setup --api-key YOUR_KEY", err=True)
-        sys.exit(1)
+    api_key = _check_ai_api_key(config)
     
     click.echo("🎯 欢迎使用AI智能测试功能！")
     click.echo("=" * 60)
@@ -1709,14 +2383,14 @@ environments:
     timeout: 30
   
   test:
-    base_url: "http://test-api.example.com"
+    base_url: "http://your-test-api.example.com"
     headers:
       Content-Type: "application/json"
       Authorization: "Bearer test-token"
     timeout: 20
     
   prod:
-    base_url: "https://api.example.com"
+    base_url: "https://your-prod-api.example.com"
     headers:
       Content-Type: "application/json"
       Authorization: "Bearer prod-token"

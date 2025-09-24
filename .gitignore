@@ -1,12 +1,58 @@
-# Python 字节码文件
+# =============================================================================
+# 接口自动化测试框架 - Git忽略文件
+# =============================================================================
+#
+# 本文件定义了Git版本控制中需要忽略的文件和目录，
+# 包括敏感信息、临时文件、缓存文件等。
+#
+# 主要忽略内容：
+# 1. 敏感信息 - API密钥、密码、令牌等
+# 2. 临时文件 - 日志、缓存、临时数据
+# 3. 环境相关 - 虚拟环境、IDE配置
+# 4. 测试输出 - 测试报告、测试数据
+# 5. 系统文件 - 操作系统生成的文件
+#
+# 作者: 接口自动化测试框架团队
+# 版本: 1.0.0
+# 更新日期: 2024年12月
+# =============================================================================
+
+# 敏感信息和配置文件
+# =============================================================================
+# API密钥和令牌
+*.key
+*.token
+*api_key*
+*secret*
+*password*
+.env
+.env.local
+.env.production
+.env.staging
+config/production.yaml
+config/staging.yaml
+config/local.yaml
+
+# 数据库配置
+database.yaml
+db_config.yaml
+mysql.yaml
+redis.yaml
+mongodb.yaml
+
+# 区块链配置
+blockchain_prod.yaml
+blockchain_local.yaml
+*.wallet
+*.private_key
+
+# 临时文件和缓存
+# =============================================================================
+# Python缓存
 __pycache__/
 *.py[cod]
 *$py.class
-
-# C扩展
 *.so
-
-# 分发/打包
 .Python
 build/
 develop-eggs/
@@ -27,157 +73,273 @@ share/python-wheels/
 *.egg
 MANIFEST
 
-# PyInstaller
-*.manifest
-*.spec
+# 虚拟环境
+venv/
+env/
+ENV/
+env.bak/
+venv.bak/
+.venv/
+.env/
 
-# 安装程序日志
-pip-log.txt
-pip-delete-this-directory.txt
-
-# 单元测试 / 覆盖率报告
-htmlcov/
+# 测试相关
+# =============================================================================
+# 测试输出和报告
+test_results/
+test_reports/
+reports/
+*.html
+*.xml
+*.json
+coverage.xml
+*.cover
+*.py,cover
+.hypothesis/
+.pytest_cache/
 .tox/
 .nox/
+coverage/
+htmlcov/
 .coverage
 .coverage.*
 .cache
 nosetests.xml
 coverage.xml
 *.cover
-*.py,cover
 .hypothesis/
 .pytest_cache/
 
-# 翻译
-*.mo
-*.pot
-
-# Django相关
-*.log
-local_settings.py
-db.sqlite3
-db.sqlite3-journal
-
-# Flask相关
-instance/
-.webassets-cache
-
-# Scrapy相关
-.scrapy
-
-# Sphinx文档
-docs/_build/
-
-# PyBuilder
-target/
-
-# Jupyter Notebook
-.ipynb_checkpoints
-
-# IPython
-profile_default/
-ipython_config.py
-
-# pyenv
-.python-version
-
-# pipenv
-Pipfile.lock
-
-# PEP 582
-__pypackages__/
-
-# Celery相关
-celerybeat-schedule
-celerybeat.pid
-
-# SageMath解析文件
-*.sage.py
-
-# 环境变量
-.env
-.venv
-env/
-venv/
-ENV/
-env.bak/
-venv.bak/
-
-# Spyder项目设置
-.spyderproject
-.spyproject
-
-# Rope项目设置
-.ropeproject
-
-# mkdocs文档
-/site
-
-# mypy
-.mypy_cache/
-.dmypy.json
-dmypy.json
-
-# Pyre类型检查器
-.pyre/
-
-# 项目特定文件
-# 配置文件中的敏感信息
-config/*_local.yaml
-config/*_private.yaml
-
-# 测试数据库
-data/*.db
-data/*.sqlite
-data/*.sqlite3
-
-# 生成的测试文件
-tests/generated/
-**/generated/
-
-# 临时文件
+# 测试数据
+test_data/
+test_files/
+*.test
 *.tmp
-*.temp
-*.bak
+temp/
+tmp/
 
 # 日志文件
+# =============================================================================
 *.log
 logs/
+log/
+*.out
+*.err
 
-# 报告文件
-reports/*.html
-reports/*.json
-reports/*.xml
-
-# 导出文件
-exports/
-*.xlsx
-*.xls
-
-# IDE文件
+# IDE和编辑器
+# =============================================================================
+# VSCode
 .vscode/
+*.code-workspace
+
+# PyCharm
 .idea/
+*.iml
+*.ipr
+*.iws
+
+# Sublime Text
+*.sublime-project
+*.sublime-workspace
+
+# Vim
 *.swp
 *.swo
 *~
 
-# macOS文件
+# Emacs
+*~
+\#*\#
+/.emacs.desktop
+/.emacs.desktop.lock
+*.elc
+auto-save-list
+tramp
+.\#*
+
+# 操作系统文件
+# =============================================================================
+# macOS
 .DS_Store
 .AppleDouble
 .LSOverride
+Icon
+._*
+.DocumentRevisions-V100
+.fseventsd
+.Spotlight-V100
+.TemporaryItems
+.Trashes
+.VolumeIcon.icns
+.com.apple.timemachine.donotpresent
+.AppleDB
+.AppleDesktop
+Network Trash Folder
+Temporary Items
+.apdisk
 
-# Windows文件
+# Windows
 Thumbs.db
+Thumbs.db:encryptable
 ehthumbs.db
+ehthumbs_vista.db
+*.tmp
+*.temp
 Desktop.ini
+$RECYCLE.BIN/
+*.cab
+*.msi
+*.msix
+*.msm
+*.msp
+*.lnk
 
-# 开发过程中的总结文档
-*_SUMMARY.md
-*_PLAN.md
-*_OPTIMIZATION*.md
+# Linux
+*~
+.fuse_hidden*
+.directory
+.Trash-*
+.nfs*
 
-# AI API密钥和敏感配置
-.api_keys
-.secrets
-api_config.json
+# 项目特定文件
+# =============================================================================
+# 配置备份
+*.yaml.bak
+*.yml.bak
+*.json.bak
+*.conf.bak
+
+# 数据备份
+*.db.backup
+*.sql.backup
+backup/
+backups/
+
+# 文档生成
+docs/_build/
+docs/build/
+site/
+
+# 部署相关
+deploy/
+deployment/
+docker-compose.override.yml
+.dockerignore
+
+# 监控和统计
+monitoring/
+metrics/
+stats/
+analytics/
+
+# 安全扫描报告
+security_scan/
+vulnerability_report/
+*.security
+
+# 性能测试
+performance_test/
+load_test/
+stress_test/
+benchmark/
+
+# 集成测试输出
+integration_test_output/
+e2e_test_results/
+
+# 区块链相关
+# =============================================================================
+# 钱包文件
+wallets/
+*.wallet
+*.keystore
+mnemonic.txt
+
+# 智能合约
+contracts/build/
+contracts/artifacts/
+contracts/cache/
+contracts/typechain/
+
+# 区块链数据
+blockchain_data/
+chain_data/
+node_data/
+
+# AI相关
+# =============================================================================
+# AI模型缓存
+ai_models/
+model_cache/
+*.model
+*.pkl
+*.joblib
+
+# AI训练数据
+training_data/
+ai_training/
+model_training/
+
+# 特定文件忽略
+# =============================================================================
+# 包含真实API Key的文件
+*_with_real_keys.*
+*_production.*
+*_live.*
+
+# 用户自定义配置
+user_config/
+personal_config/
+local_settings/
+
+# 第三方服务配置
+third_party_config/
+external_services/
+
+# 证书和密钥
+*.pem
+*.crt
+*.cer
+*.p12
+*.pfx
+
+# 压缩文件
+*.zip
+*.tar.gz
+*.rar
+*.7z
+
+# 媒体文件
+*.mp4
+*.avi
+*.mov
+*.mp3
+*.wav
+*.png
+*.jpg
+*.jpeg
+*.gif
+*.bmp
+*.svg
+
+# 文档模板
+templates/generated/
+generated_docs/
+
+# 脚本输出
+script_output/
+generated_scripts/
+
+# 数据库文件
+*.db
+*.sqlite
+*.sqlite3
+
+# 配置文件模板
+*_template.*
+*_example.*
+*.template
+
+# 用户数据
+user_data/
+personal_data/
+private_data/

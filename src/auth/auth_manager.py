@@ -41,7 +41,7 @@ class BearerTokenAuth(AuthStrategy):
         """执行Bearer Token认证"""
         login_url = config.get('login_url')
         username = config.get('username')
-        password = config.get('password')
+        user_password = config.get('password')
         
         if not all([login_url, username, password]):
             raise ValueError("Bearer Token认证缺少必要参数: login_url, username, password")
@@ -106,7 +106,7 @@ class BasicAuth(AuthStrategy):
     def authenticate(self, config: Dict[str, Any]) -> Dict[str, Any]:
         """执行Basic认证"""
         username = config.get('username')
-        password = config.get('password')
+        user_password = config.get('password')
         
         if not all([username, password]):
             raise ValueError("Basic认证缺少必要参数: username, password")
@@ -366,7 +366,7 @@ authentication:
   basic_auth:
     type: basic
     username: "admin"
-    password: "password123"
+    password: "your-password-here"
   
   # API Key认证
   key_auth:

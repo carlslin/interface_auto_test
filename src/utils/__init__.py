@@ -32,5 +32,10 @@ from .config_loader import ConfigLoader
 from .validator import ResponseValidator
 from .data_faker import DataFaker
 from .data_manager import DataManager
+from .security_manager import SecurityManager, SecureConfigManager
+from .cache_manager import CacheManager, MemoryCache, RedisCache
+from .performance_monitor import PerformanceMonitor, monitor_performance, get_global_monitor
 
-__all__ = ["ConfigLoader", "ResponseValidator", "DataFaker", "DataManager"]
+__all__ = ["ConfigLoader", "ResponseValidator", "DataFaker", "DataManager", 
+           "SecurityManager", "SecureConfigManager", "CacheManager", "MemoryCache", "RedisCache",
+           "PerformanceMonitor", "monitor_performance", "get_global_monitor"]

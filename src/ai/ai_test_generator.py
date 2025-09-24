@@ -55,6 +55,454 @@ class AITestGenerator:
             "uuid": "UUID"              # 唯一标识符格式
         }
     
+    def generate_comprehensive_test_scenarios(
+        self,
+        api_spec: Dict[str, Any],
+        endpoint_path: str,
+        method: str,
+        business_context: Optional[str] = None
+    ) -> Dict[str, Any]:
+        """
+        生成全面的测试场景，包括各种错误、空值、服务失效等各种测试场景
+        
+        Args:
+            api_spec: API规范
+            endpoint_path: 接口路径
+            method: HTTP方法
+            business_context: 业务上下文
+            
+        Returns:
+            Dict: 包含所有测试场景的综合结果
+        """
+        self.logger.info(f"为接口 {method} {endpoint_path} 生成全面测试场景")
+        
+        # 获取接口信息
+        endpoint_info = self._extract_endpoint_info(api_spec, endpoint_path, method)
+        if not endpoint_info:
+            return {
+                "error": f"未找到接口 {method} {endpoint_path}",
+                "success": False
+            }
+        
+        # 定义全面的测试场景类型
+        test_scenarios = {
+            "normal": "正常流程测试",
+            "boundary": "边界值测试", 
+            "null_empty": "空值和空字符串测试",
+            "invalid_data": "非法数据测试",
+            "type_mismatch": "数据类型不匹配测试",
+            "missing_required": "缺少必需参数测试",
+            "extra_fields": "额外字段测试",
+            "length_limits": "长度限制测试",
+            "format_validation": "格式验证测试",
+            "sql_injection": "SQL注入攻击测试",
+            "xss_attack": "XSS攻击测试",
+            "auth_bypass": "权限绕过测试",
+            "rate_limiting": "频率限制测试",
+            "concurrent_access": "并发访问测试",
+            "service_unavailable": "服务不可用测试",
+            "timeout": "超时测试",
+            "network_error": "网络错误测试",
+            "load_testing": "负载测试",
+            "stress_testing": "压力测试",
+            "data_consistency": "数据一致性测试",
+            "idempotency": "幂等性测试"
+        }
+        
+        results = {
+            "endpoint": f"{method} {endpoint_path}",
+            "business_context": business_context,
+            "endpoint_info": endpoint_info,
+            "test_scenarios": {},
+            "summary": {
+                "total_scenarios": len(test_scenarios),
+                "generated_cases": 0,
+                "generation_time": datetime.now().isoformat()
+            }
+        }
+        
+        # 为每个场景生成测试用例
+        for scenario_type, description in test_scenarios.items():
+            self.logger.info(f"生成{description}用例")
+            
+            scenario_cases = self._generate_scenario_test_cases(
+                endpoint_info, scenario_type, business_context
+            )
+            
+            if scenario_cases.success:
+                try:
+                    parsed_cases = json.loads(scenario_cases.content)
+                    case_count = len(parsed_cases) if isinstance(parsed_cases, list) else 1
+                    
+                    results["test_scenarios"][scenario_type] = {
+                        "description": description,
+                        "test_cases": parsed_cases,
+                        "count": case_count,
+                        "priority": self._get_scenario_priority(scenario_type),
+                        "category": self._get_scenario_category(scenario_type)
+                    }
+                    
+                    results["summary"]["generated_cases"] += case_count
+                    
+                except json.JSONDecodeError:
+                    # 如果不是JSON格式，保存原始内容
+                    results["test_scenarios"][scenario_type] = {
+                        "description": description,
+                        "content": scenario_cases.content,
+                        "count": 1,
+                        "priority": self._get_scenario_priority(scenario_type),
+                        "category": self._get_scenario_category(scenario_type)
+                    }
+                    results["summary"]["generated_cases"] += 1
+            else:
+                self.logger.warning(f"{description}生成失败: {scenario_cases.error}")
+                results["test_scenarios"][scenario_type] = {
+                    "description": description,
+                    "error": scenario_cases.error,
+                    "count": 0
+                }
+        
+        return results
+    
+    def _extract_endpoint_info(self, api_spec: Dict[str, Any], endpoint_path: str, method: str) -> Optional[Dict[str, Any]]:
+        """提取接口信息"""
+        paths = api_spec.get("paths", {})
+        if endpoint_path not in paths:
+            return None
+            
+        endpoint = paths[endpoint_path]
+        if method.lower() not in endpoint:
+            return None
+            
+        method_info = endpoint[method.lower()]
+        
+        return {
+            "path": endpoint_path,
+            "method": method.upper(),
+            "summary": method_info.get("summary", ""),
+            "description": method_info.get("description", ""),
+            "parameters": method_info.get("parameters", []),
+            "requestBody": method_info.get("requestBody", {}),
+            "responses": method_info.get("responses", {}),
+            "security": method_info.get("security", []),
+            "tags": method_info.get("tags", [])
+        }
+    
+    def _generate_scenario_test_cases(self, endpoint_info: Dict[str, Any], scenario_type: str, business_context: Optional[str] = None) -> AIResponse:
+        """为特定场景生成测试用例"""
+        
+        context_prompt = ""
+        if business_context:
+            context_prompt = f"\n\n业务上下文：\n{business_context}"
+        
+        endpoint_str = json.dumps(endpoint_info, ensure_ascii=False, indent=2)
+        
+        # 为不同场景类型定义特定的提示词
+        scenario_prompts = {
+            "normal": "生成正常流程的测试用例，验证基本功能是否正常工作。包括有效的输入参数和正常的业务场景。",
+            "boundary": "生成边界值测试用例，测试参数的最大值、最小值、临界值等。包括数值范围、字符串长度、数组大小等边界情况。",
+            "null_empty": "生成空值和空字符串测试用例，测试null、空字符串、空数组、空对象等情况下的系统表现。",
+            "invalid_data": "生成非法数据测试用例，包括不符合格式的数据、超出范围的值、特殊字符等。",
+            "type_mismatch": "生成数据类型不匹配测试用例，测试传入错误类型的参数（如期望整数但传入字符串）。",
+            "missing_required": "生成缺少必需参数的测试用例，测试不提供必填字段时的错误处理。",
+            "extra_fields": "生成包含额外字段的测试用例，测试系统对未定义字段的处理能力。",
+            "length_limits": "生成超出长度限制的测试用例，测试超长字符串、大数组等情况。",
+            "format_validation": "生成格式验证测试用例，测试邮箱、日期、URL等特定格式的验证。",
+            "sql_injection": "生成SQL注入攻击测试用例，测试系统对SQL注入攻击的防护能力。",
+            "xss_attack": "生成XSS攻击测试用例，测试系统对跨站脚本攻击的防护。",
+            "auth_bypass": "生成权限绕过测试用例，测试未授权访问、token伪造等安全问题。",
+            "rate_limiting": "生成频率限制测试用例，测试高频访问时的限流机制。",
+            "concurrent_access": "生成并发访问测试用例，测试同时多个请求的处理情况。",
+            "service_unavailable": "生成服务不可用测试用例，模拟依赖服务失效的情况。",
+            "timeout": "生成超时测试用例，测试请求超时的处理情况。",
+            "network_error": "生成网络错误测试用例，模拟网络中断、连接失败等情况。",
+            "load_testing": "生成负载测试用例，测试系统在正常负载下的性能表现。",
+            "stress_testing": "生成压力测试用例，测试系统在极限条件下的稳定性。",
+            "data_consistency": "生成数据一致性测试用例，验证数据的一致性和完整性。",
+            "idempotency": "生成幂等性测试用例，测试重复操作的结果一致性。"
+        }
+        
+        scenario_description = scenario_prompts.get(scenario_type, f"生成{scenario_type}测试用例")
+        
+        prompt = f"""请为以下接口{scenario_description}
+
+接口信息：
+{endpoint_str}{context_prompt}
+
+请生成详细的测试用例，包含：
+1. 测试用例名称和描述
+2. 测试目标
+3. 请求参数（路径参数、查询参数、请求体）
+4. 预期响应状态码
+5. 预期响应内容
+6. 断言验证点
+7. 测试数据说明
+8. 注意事项
+
+请以JSON数组格式返回测试用例列表。"""
+        
+        return self.client.generate_test_cases(
+            {"endpoint": endpoint_info, "scenario": scenario_type, "prompt": prompt},
+            scenario_type
+        )
+    
+    def _get_scenario_priority(self, scenario_type: str) -> str:
+        """获取场景优先级"""
+        high_priority = ["normal", "missing_required", "auth_bypass", "sql_injection"]
+        medium_priority = ["boundary", "invalid_data", "type_mismatch", "xss_attack"]
+        low_priority = ["extra_fields", "length_limits", "format_validation"]
+        
+        if scenario_type in high_priority:
+            return "High"
+        elif scenario_type in medium_priority:
+            return "Medium"
+        else:
+            return "Low"
+    
+    def _get_scenario_category(self, scenario_type: str) -> str:
+        """获取场景分类"""
+        functional_tests = ["normal", "boundary"]
+        security_tests = ["sql_injection", "xss_attack", "auth_bypass"]
+        error_tests = ["null_empty", "invalid_data", "type_mismatch", "missing_required"]
+        performance_tests = ["rate_limiting", "concurrent_access", "load_testing", "stress_testing"]
+        reliability_tests = ["service_unavailable", "timeout", "network_error"]
+        data_tests = ["data_consistency", "idempotency"]
+        
+        if scenario_type in functional_tests:
+            return "Functional"
+        elif scenario_type in security_tests:
+            return "Security"
+        elif scenario_type in error_tests:
+            return "Error Handling"
+        elif scenario_type in performance_tests:
+            return "Performance"
+        elif scenario_type in reliability_tests:
+            return "Reliability"
+        elif scenario_type in data_tests:
+            return "Data Integrity"
+        else:
+            return "Other"
+    
+    def enhance_traditional_tests(
+        self,
+        existing_test_file_path: str,
+        api_spec: Dict[str, Any],
+        enhancement_options: Optional[Dict[str, Any]] = None
+    ) -> Dict[str, Any]:
+        """
+        使用AI对传统测试进行智能化补全和增强
+        
+        Args:
+            existing_test_file_path: 现有测试文件路径
+            api_spec: API规范
+            enhancement_options: 增强选项
+            
+        Returns:
+            Dict: 增强后的测试结果
+        """
+        self.logger.info(f"使用AI增强传统测试: {existing_test_file_path}")
+        
+        try:
+            # 读取现有测试文件
+            with open(existing_test_file_path, 'r', encoding='utf-8') as f:
+                existing_test_code = f.read()
+        except FileNotFoundError:
+            return {
+                "success": False,
+                "error": f"测试文件不存在: {existing_test_file_path}"
+            }
+        except Exception as e:
+            return {
+                "success": False,
+                "error": f"读取测试文件失败: {str(e)}"
+            }
+        
+        # 分析现有测试代码
+        analysis_result = self._analyze_existing_test_code(existing_test_code)
+        
+        if not analysis_result.success:
+            return {
+                "success": False,
+                "error": f"测试代码分析失败: {analysis_result.error}"
+            }
+        
+        # 默认增强选项
+        default_options = {
+            "add_edge_cases": True,           # 添加边界情况测试
+            "add_error_handling": True,      # 添加错误处理测试
+            "add_security_tests": True,      # 添加安全测试
+            "improve_assertions": True,      # 改进断言
+            "add_data_validation": True,     # 添加数据验证
+            "add_performance_checks": True,  # 添加性能检查
+            "optimize_test_data": True,      # 优化测试数据
+            "add_documentation": True,       # 添加文档注释
+            "refactor_structure": False      # 重构测试结构
+        }
+        
+        if enhancement_options:
+            default_options.update(enhancement_options)
+        
+        # 生成增强建议
+        enhancement_suggestions = self._generate_enhancement_suggestions(
+            existing_test_code, api_spec, analysis_result.content, default_options
+        )
+        
+        if not enhancement_suggestions.success:
+            return {
+                "success": False,
+                "error": f"增强建议生成失败: {enhancement_suggestions.error}"
+            }
+        
+        # 生成增强后的测试代码
+        enhanced_code_result = self._generate_enhanced_test_code(
+            existing_test_code, enhancement_suggestions.content, default_options
+        )
+        
+        if not enhanced_code_result.success:
+            return {
+                "success": False,
+                "error": f"增强代码生成失败: {enhanced_code_result.error}"
+            }
+        
+        return {
+            "success": True,
+            "original_analysis": analysis_result.content,
+            "enhancement_suggestions": enhancement_suggestions.content,
+            "enhanced_code": enhanced_code_result.content,
+            "enhancement_options": default_options,
+            "improvements_count": self._count_improvements(enhancement_suggestions.content),
+            "file_path": existing_test_file_path
+        }
+    
+    def _analyze_existing_test_code(self, test_code: str) -> AIResponse:
+        """分析现有测试代码"""
+        
+        prompt = f"""请对以下测试代码进行深度分析：
+
+测试代码：
+```python
+{test_code}
+```
+
+请从以下角度进行分析：
+1. 测试覆盖范围分析
+   - 测试的API接口
+   - 测试场景识别
+   - 数据覆盖情况
+
+2. 测试质量评估
+   - 断言的完整性
+   - 错误处理覆盖
+   - 边界情况考虑
+
+3. 潜在问题识别
+   - 缺少的测试场景
+   - 不充分的验证
+   - 可能的安全风险
+
+4. 代码质量分析
+   - 可读性和可维护性
+   - 代码结构合理性
+   - 最佳实践遵循情况
+
+请提供结构化的分析结果。"""
+        
+        return self.client.analyze_api_doc(prompt, "test_analysis")
+    
+    def _generate_enhancement_suggestions(
+        self, 
+        test_code: str, 
+        api_spec: Dict[str, Any], 
+        analysis: str, 
+        options: Dict[str, Any]
+    ) -> AIResponse:
+        """生成增强建议"""
+        
+        api_spec_str = json.dumps(api_spec, ensure_ascii=False, indent=2)
+        options_str = json.dumps(options, ensure_ascii=False, indent=2)
+        
+        prompt = f"""基于以下分析结果和API规范，请提供测试代码的增强建议：
+
+分析结果：
+{analysis}
+
+API规范：
+{api_spec_str}
+
+增强选项：
+{options_str}
+
+请提供具体的增强建议，包括：
+
+1. 新增测试场景
+   - 缺少的边界情况测试
+   - 错误处理测试
+   - 安全性测试
+   - 性能测试
+
+2. 改进现有测试
+   - 增强断言验证
+   - 优化测试数据
+   - 改进代码结构
+
+3. 添加辅助功能
+   - 测试数据准备
+   - 环境清理
+   - 日志和报告
+
+请以结构化的方式提供建议，包含优先级和具体实施步骤。"""
+        
+        return self.client.optimize_test_data({"code": test_code, "spec": api_spec}, ["enhancement"])
+    
+    def _generate_enhanced_test_code(self, original_code: str, suggestions: str, options: Dict[str, Any]) -> AIResponse:
+        """生成增强后的测试代码"""
+        
+        options_str = json.dumps(options, ensure_ascii=False, indent=2)
+        
+        prompt = f"""请根据以下增强建议，对原始测试代码进行改进和增强：
+
+原始测试代码：
+```python
+{original_code}
+```
+
+增强建议：
+{suggestions}
+
+增强选项：
+{options_str}
+
+请生成改进后的完整测试代码，确保：
+
+1. 保持原有功能的同时添加新的测试场景
+2. 改进断言和验证逻辑
+3. 添加适当的注释和文档
+4. 遵循代码质量最佳实践
+5. 确保代码的可读性和可维护性
+
+请返回完整的Python测试代码。"""
+        
+        return self.client.generate_code(prompt, "python")
+    
+    def _count_improvements(self, suggestions: str) -> int:
+        """统计改进项数量"""
+        try:
+            # 简单统计建议中的改进点
+            improvement_keywords = [
+                "新增", "添加", "改进", "增强", "优化",
+                "add", "improve", "enhance", "optimize", "fix"
+            ]
+            
+            count = 0
+            suggestions_lower = suggestions.lower()
+            
+            for keyword in improvement_keywords:
+                count += suggestions_lower.count(keyword.lower())
+            
+            return count
+        except:
+            return 0
+    
     def generate_comprehensive_tests(
         self,
         api_spec: Dict[str, Any],
@@ -62,25 +510,21 @@ class AITestGenerator:
         test_requirements: Optional[List[str]] = None
     ) -> Dict[str, Any]:
         """
-        生成全面的测试用例
+        生成全面的测试用例（兼容旧API）
         
-        这是核心的测试生成方法，能够根据API规范生成多种类型的测试用例。
-        包括功能测试、边界值测试、异常测试、安全测试和性能测试。
+        这是兼容旧版本的方法，建议使用 generate_comprehensive_test_scenarios 方法
         
         Args:
-            api_spec: API规范字典，通常为OpenAPI 3.0格式
-            business_context: 业务上下文描述，帮助AI理解业务逻辑
-            test_requirements: 特定的测试需求列表，用于定制化测试生成
+            api_spec: API规范字典
+            business_context: 业务上下文描述
+            test_requirements: 特定的测试需求列表
             
         Returns:
             Dict: 包含各类型测试用例的综合结果
-                - analysis: API分析结果
-                - test_suites: 各类型测试用例集合
-                - summary: 生成统计信息
         """
-        self.logger.info("开始生成全面的API测试用例")
+        self.logger.info("开始生成全面的API测试用例（兼容模式）")
         
-        # 第一步：分析API规范，了解接口结构和业务逻辑
+        # 第一步：分析API规范
         analysis_result = self._analyze_api_specification(api_spec, business_context)
         
         if not analysis_result.success:
@@ -88,13 +532,12 @@ class AITestGenerator:
             return {"error": "API规范分析失败", "details": analysis_result.error}
         
         # 第二步：定义不同类型的测试用例
-        # 每种类型都有其特定的测试目标和关注点
         test_types = [
-            ("functional", "功能测试"),      # 验证基本功能是否正常
-            ("boundary", "边界值测试"),     # 测试参数的边界情况
-            ("negative", "异常测试"),       # 测试异常输入和错误处理
-            ("security", "安全测试"),       # 验证安全机制和漏洞
-            ("performance", "性能测试")     # 测试响应时间和并发处理
+            ("functional", "功能测试"),
+            ("boundary", "边界值测试"),
+            ("negative", "异常测试"),
+            ("security", "安全测试"),
+            ("performance", "性能测试")
         ]
         
         # 初始化结果结构

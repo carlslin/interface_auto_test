@@ -1,0 +1,363 @@
+# =============================================================================
+# 接口自动化测试框架 - 区块链配置文件
+# =============================================================================
+# 
+# 本配置文件定义了区块链相关的配置参数，包括各种网络的连接信息、
+# 钱包管理、智能合约部署等设置。
+#
+# 主要配置项：
+# 1. 以太坊网络配置 - 支持主网、测试网、L2网络
+# 2. 比特币网络配置 - 支持主网、测试网、回归测试网
+# 3. 连接池配置 - 长连接和连接池设置
+# 4. 安全配置 - 私钥管理和加密设置
+# 5. 监控配置 - 连接监控和告警设置
+#
+# 安全注意事项：
+# - 私钥等敏感信息建议通过环境变量设置
+# - 生产环境请使用专用的私钥管理方案
+# - 测试网私钥不要用于主网操作
+#
+# 使用示例：
+#   # 通过环境变量设置私钥
+#   export ETHEREUM_PRIVATE_KEY="0x1234..."
+#   
+#   # 在代码中加载配置
+#   from src.blockchain.blockchain_config import BlockchainConfig
+#   config = BlockchainConfig()
+#   eth_config = config.get_network_config("ethereum", "sepolia")
+#
+# 作者: 接口自动化测试框架团队
+# 版本: 1.0.0
+# 更新日期: 2024年12月
+# =============================================================================
+
+# 以太坊网络配置
+ethereum:
+  # 以太坊主网配置
+  mainnet:
+    rpc_url: "https://mainnet.infura.io/v3/YOUR_INFURA_KEY"
+    ws_url: "wss://mainnet.infura.io/ws/v3/YOUR_INFURA_KEY"
+    chain_id: 1
+    explorer: "https://etherscan.io"
+    gas_price_gwei: 20
+    gas_limit: 21000
+    # 私钥通过环境变量设置: ETHEREUM_MAINNET_PRIVATE_KEY
+    private_key: "${ETHEREUM_MAINNET_PRIVATE_KEY}"
+    
+  # 以太坊Sepolia测试网
+  sepolia:
+    rpc_url: "https://sepolia.infura.io/v3/YOUR_INFURA_KEY"
+    ws_url: "wss://sepolia.infura.io/ws/v3/YOUR_INFURA_KEY"
+    chain_id: 11155111
+    explorer: "https://sepolia.etherscan.io"
+    gas_price_gwei: 1
+    gas_limit: 21000
+    # 私钥通过环境变量设置: ETHEREUM_SEPOLIA_PRIVATE_KEY
+    private_key: "${ETHEREUM_SEPOLIA_PRIVATE_KEY}"
+    
+  # 以太坊Goerli测试网（已废弃，保留兼容性）
+  goerli:
+    rpc_url: "https://goerli.infura.io/v3/YOUR_INFURA_KEY"
+    ws_url: "wss://goerli.infura.io/ws/v3/YOUR_INFURA_KEY"
+    chain_id: 5
+    explorer: "https://goerli.etherscan.io"
+    gas_price_gwei: 1
+    gas_limit: 21000
+    private_key: "${ETHEREUM_GOERLI_PRIVATE_KEY}"
+    
+  # 以太坊Holesky测试网
+  holesky:
+    rpc_url: "https://holesky.infura.io/v3/YOUR_INFURA_KEY"
+    ws_url: "wss://holesky.infura.io/ws/v3/YOUR_INFURA_KEY"
+    chain_id: 17000
+    explorer: "https://holesky.etherscan.io"
+    gas_price_gwei: 1
+    gas_limit: 21000
+    private_key: "${ETHEREUM_HOLESKY_PRIVATE_KEY}"
+    
+  # Binance Smart Chain (BSC)
+  bsc:
+    rpc_url: "https://bsc-dataseed.binance.org"
+    ws_url: "wss://bsc-ws-node.nariox.org:443/ws"
+    chain_id: 56
+    explorer: "https://bscscan.com"
+    gas_price_gwei: 5
+    gas_limit: 21000
+    private_key: "${BSC_PRIVATE_KEY}"
+    
+  # BSC测试网
+  bsc_testnet:
+    rpc_url: "https://data-seed-prebsc-1-s1.binance.org:8545"
+    ws_url: "wss://bsc-testnet.publicnode.com"
+    chain_id: 97
+    explorer: "https://testnet.bscscan.com"
+    gas_price_gwei: 10
+    gas_limit: 21000
+    private_key: "${BSC_TESTNET_PRIVATE_KEY}"
+    
+  # Polygon主网
+  polygon:
+    rpc_url: "https://polygon-rpc.com"
+    ws_url: "wss://polygon-mainnet.publicnode.com"
+    chain_id: 137
+    explorer: "https://polygonscan.com"
+    gas_price_gwei: 30
+    gas_limit: 21000
+    private_key: "${POLYGON_PRIVATE_KEY}"
+    
+  # Polygon Mumbai测试网
+  mumbai:
+    rpc_url: "https://rpc-mumbai.maticvigil.com"
+    ws_url: "wss://ws-mumbai.maticvigil.com"
+    chain_id: 80001
+    explorer: "https://mumbai.polygonscan.com"
+    gas_price_gwei: 1
+    gas_limit: 21000
+    private_key: "${POLYGON_MUMBAI_PRIVATE_KEY}"
+    
+  # Arbitrum One主网
+  arbitrum:
+    rpc_url: "https://arb1.arbitrum.io/rpc"
+    ws_url: "wss://arb1.arbitrum.io/ws"
+    chain_id: 42161
+    explorer: "https://arbiscan.io"
+    gas_price_gwei: 0.1
+    gas_limit: 21000
+    private_key: "${ARBITRUM_PRIVATE_KEY}"
+    
+  # Arbitrum Goerli测试网
+  arbitrum_goerli:
+    rpc_url: "https://goerli-rollup.arbitrum.io/rpc"
+    ws_url: "wss://goerli-rollup.arbitrum.io/ws"
+    chain_id: 421613
+    explorer: "https://goerli.arbiscan.io"
+    gas_price_gwei: 0.1
+    gas_limit: 21000
+    private_key: "${ARBITRUM_GOERLI_PRIVATE_KEY}"
+    
+  # Optimism主网
+  optimism:
+    rpc_url: "https://mainnet.optimism.io"
+    ws_url: "wss://mainnet.optimism.io/ws"
+    chain_id: 10
+    explorer: "https://optimistic.etherscan.io"
+    gas_price_gwei: 0.001
+    gas_limit: 21000
+    private_key: "${OPTIMISM_PRIVATE_KEY}"
+    
+  # Optimism Goerli测试网
+  optimism_goerli:
+    rpc_url: "https://goerli.optimism.io"
+    ws_url: "wss://goerli.optimism.io/ws"
+    chain_id: 420
+    explorer: "https://goerli-optimism.etherscan.io"
+    gas_price_gwei: 0.001
+    gas_limit: 21000
+    private_key: "${OPTIMISM_GOERLI_PRIVATE_KEY}"
+
+# 比特币网络配置
+bitcoin:
+  # 比特币主网
+  mainnet:
+    rpc_host: "localhost"
+    rpc_port: 8332
+    rpc_user: "bitcoinrpc"
+    rpc_password: "YOUR_RPC_PASSWORD"
+    network: "mainnet"
+    explorer: "https://blockstream.info"
+    fee_rate_sat_per_vb: 10
+    
+  # 比特币测试网
+  testnet:
+    rpc_host: "localhost"
+    rpc_port: 18332
+    rpc_user: "bitcoinrpc"
+    rpc_password: "YOUR_RPC_PASSWORD"
+    network: "testnet"
+    explorer: "https://blockstream.info/testnet"
+    fee_rate_sat_per_vb: 1
+    
+  # 比特币回归测试网（本地开发）
+  regtest:
+    rpc_host: "localhost"
+    rpc_port: 18443
+    rpc_user: "bitcoinrpc"
+    rpc_password: "YOUR_RPC_PASSWORD"
+    network: "regtest"
+    explorer: "http://localhost:3000"
+    fee_rate_sat_per_vb: 1
+
+# 连接池配置
+connection_pools:
+  # 默认连接池设置
+  default:
+    max_connections: 50
+    max_connections_per_host: 10
+    keepalive_timeout: 30
+    connect_timeout: 10
+    read_timeout: 30
+    write_timeout: 30
+    
+  # WebSocket连接池设置
+  websocket:
+    max_connections: 20
+    ping_interval: 30
+    ping_timeout: 10
+    close_timeout: 10
+    
+  # HTTP连接池设置
+  http:
+    max_connections: 100
+    max_connections_per_host: 30
+    keepalive_timeout: 60
+    connect_timeout: 15
+    read_timeout: 60
+    write_timeout: 60
+
+# 安全配置
+security:
+  # 私钥加密设置
+  encryption:
+    algorithm: "AES-256-GCM"
+    key_derivation: "PBKDF2"
+    iterations: 100000
+    
+  # 钱包安全设置
+  wallet:
+    backup_enabled: true
+    backup_location: "./wallets/backup"
+    auto_lock_timeout: 3600  # 1小时自动锁定
+    
+  # 交易安全设置
+  transaction:
+    max_gas_price_gwei: 100
+    max_gas_limit: 1000000
+    confirmation_blocks: 3
+    timeout_seconds: 300
+
+# 监控配置
+monitoring:
+  # 连接监控设置
+  connection:
+    heartbeat_interval: 30
+    max_retry_attempts: 5
+    retry_delay: 1.0
+    health_check_interval: 60
+    
+  # 性能监控设置
+  performance:
+    metrics_enabled: true
+    log_level: "INFO"
+    slow_query_threshold: 5000  # 毫秒
+    
+  # 告警设置
+  alerts:
+    enabled: true
+    webhook_url: "${ALERT_WEBHOOK_URL}"
+    alert_conditions:
+      - type: "connection_failure"
+        threshold: 3
+      - type: "high_gas_price"
+        threshold: 50  # Gwei
+      - type: "transaction_failure"
+        threshold: 5
+
+# 智能合约配置
+smart_contracts:
+  # 合约部署设置
+  deployment:
+    gas_limit: 2000000
+    gas_price_gwei: 20
+    timeout_seconds: 600
+    confirmation_blocks: 1
+    
+  # 合约测试设置
+  testing:
+    test_networks: ["sepolia", "bsc_testnet", "mumbai"]
+    max_test_duration: 3600  # 1小时
+    test_data_dir: "./contracts/test_data"
+    
+  # 常用合约地址
+  addresses:
+    # ERC20代币合约示例
+    erc20_example: "0x6B175474E89094C44Da98b954EedeAC495271d0F"  # USDC
+    # NFT合约示例
+    nft_example: "0x60E4d786628Fea6478F785A6d7e704777c86a7c6"  # MAYC
+    
+    # 测试网合约地址
+    sepolia:
+      usdc: "0x94a9D9AC8a22534E3FaCa9F4e7F2E2cf85d5E4C8"
+      weth: "0xfFf9976782d46CC05630D1f6eBAb18b2324d6B14"
+
+# 事件订阅配置
+event_subscriptions:
+  # 默认订阅设置
+  default:
+    batch_size: 100
+    batch_timeout: 5  # 秒
+    max_retries: 3
+    retry_delay: 1.0
+    
+  # 事件过滤器
+  filters:
+    # 新区块事件
+    new_heads:
+      enabled: true
+      max_block_range: 1000
+      
+    # 交易事件
+    transactions:
+      enabled: true
+      address_filter: []  # 空表示监听所有地址
+      
+    # 日志事件
+    logs:
+      enabled: true
+      topics: []  # 空表示监听所有主题
+      
+  # 事件处理设置
+  handlers:
+    max_concurrent_handlers: 10
+    handler_timeout: 30
+    dead_letter_queue: true
+
+# 开发环境配置
+development:
+  # 调试设置
+  debug:
+    enabled: true
+    log_requests: true
+    log_responses: true
+    log_errors: true
+    
+  # 模拟模式设置
+  mock:
+    enabled: false
+    mock_delay: 0.1  # 模拟网络延迟
+    mock_failure_rate: 0.0  # 模拟失败率
+    
+  # 测试数据设置
+  test_data:
+    generate_fake_addresses: true
+    fake_address_prefix: "0x1234567890abcdef"
+    generate_fake_transactions: true
+
+# 生产环境配置
+production:
+  # 性能优化设置
+  performance:
+    connection_pooling: true
+    request_caching: true
+    response_compression: true
+    
+  # 安全设置
+  security:
+    ssl_verification: true
+    rate_limiting: true
+    request_signing: true
+    
+  # 监控设置
+  monitoring:
+    detailed_logging: false
+    metrics_collection: true
+    error_reporting: true

@@ -182,7 +182,7 @@ authentication:
   basic_auth:
     type: basic
     username: "admin"
-    password: "password123"
+    password: "your-password-here"
     
   # API Key认证 - 适用于服务间调用
   key_auth:

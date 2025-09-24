@@ -1,8 +1,32 @@
 """
-DeepSeek AI 客户端
+=============================================================================
+接口自动化测试框架 - DeepSeek AI 客户端模块
+=============================================================================
 
-提供与DeepSeek AI API的集成，支持智能代码生成、分析和优化
+本模块提供了与DeepSeek AI API的完整集成，支持智能化的接口测试功能。
+DeepSeek是一个强大的AI模型，能够理解代码、生成测试用例、分析API文档等。
+
+主要功能：
+1. 智能测试用例生成 - 根据API文档自动生成测试用例
+2. 代码质量分析 - 分析测试代码质量并提供改进建议
+3. 智能断言生成 - 自动生成合适的断言逻辑
+4. 测试数据生成 - 生成符合业务逻辑的测试数据
+5. 自然语言交互 - 支持自然语言描述测试需求
+6. 错误诊断 - 智能分析测试失败原因
+
+技术特性：
+- 支持流式和非流式响应
+- 完整的错误处理和重试机制
+- 请求和响应的详细日志记录
+- 支持多种模型和参数配置
+- 自动化的token使用统计
+
 API文档: https://api-docs.deepseek.com/zh-cn/
+
+作者: 接口自动化测试框架团队
+版本: 1.0.0
+更新日期: 2024年12月
+=============================================================================
 """
 
 from __future__ import annotations
@@ -10,47 +34,134 @@ from __future__ import annotations
 import json
 import logging
 import requests
-from typing import Dict, Any, List, Optional
-from dataclasses import dataclass
+import time
+from typing import Dict, Any, List, Optional, Generator, Union
+from dataclasses import dataclass, field
 from pathlib import Path
+from enum import Enum
+
+
+class AIModel(Enum):
+    """AI模型枚举"""
+    DEEPSEEK_CHAT = "deepseek-chat"           # 通用对话模型
+    DEEPSEEK_CODER = "deepseek-coder"         # 代码生成模型
+    DEEPSEEK_REASONER = "deepseek-reasoner"   # 推理模型
+
+
+class FinishReason(Enum):
+    """完成原因枚举"""
+    STOP = "stop"                    # 正常完成
+    LENGTH = "length"                # 达到最大长度
+    CONTENT_FILTER = "content_filter"  # 内容过滤
+    FUNCTION_CALL = "function_call"  # 函数调用
 
 
 @dataclass
 class AIResponse:
-    """AI响应数据类"""
+    """
+    AI响应数据类
+    
+    用于封装DeepSeek AI API的响应数据，包含完整的响应信息：
+    - 响应内容：AI生成的内容
+    - 使用统计：token使用情况
+    - 模型信息：使用的模型和完成原因
+    - 错误信息：如果请求失败的错误详情
+    
+    Attributes:
+        success: 请求是否成功
+        content: AI生成的内容
+        usage: token使用统计信息
+        model: 使用的AI模型
+        finish_reason: 完成原因
+        error: 错误信息（如果请求失败）
+        response_time: 响应时间（秒）
+        request_id: 请求ID（用于追踪）
+    """
     success: bool
     content: str
-    usage: Dict[str, Any]
-    model: str
-    finish_reason: str
+    usage: Dict[str, Any] = field(default_factory=dict)
+    model: str = ""
+    finish_reason: str = ""
     error: Optional[str] = None
+    response_time: float = 0.0
+    request_id: Optional[str] = None
+    
+    def to_dict(self) -> Dict[str, Any]:
+        """转换为字典格式"""
+        return {
+            'success': self.success,
+            'content': self.content,
+            'usage': self.usage,
+            'model': self.model,
+            'finish_reason': self.finish_reason,
+            'error': self.error,
+            'response_time': self.response_time,
+            'request_id': self.request_id
+        }
 
 
 class DeepSeekClient:
     """
-    DeepSeek AI客户端
+    DeepSeek AI客户端 - 接口自动化测试的AI增强核心
     
-    功能特性：
-    1. 智能代码生成和优化
-    2. 代码质量分析和建议
-    3. 测试用例智能生成
-    4. API文档理解和解析
-    5. 自然语言处理和理解
+    本客户端提供了与DeepSeek AI API的完整集成，支持智能化的接口测试功能。
+    通过AI能力，可以大幅提升测试用例的质量和覆盖率。
+    
+    主要功能：
+    1. 智能测试生成: 根据API文档自动生成高质量的测试用例
+    2. 代码质量分析: 分析测试代码并提供改进建议
+    3. 智能断言生成: 自动生成合适的断言逻辑
+    4. 测试数据生成: 生成符合业务逻辑的测试数据
+    5. 自然语言交互: 支持自然语言描述测试需求
+    6. 错误诊断: 智能分析测试失败原因
+    
+    技术特性：
+    - 支持流式和非流式响应
+    - 完整的错误处理和重试机制
+    - 请求和响应的详细日志记录
+    - 支持多种模型和参数配置
+    - 自动化的token使用统计
+    
+    使用示例：
+        client = DeepSeekClient("your-api-key")
+        
+        # 生成测试用例
+        response = client.generate_test_cases(api_doc, "用户管理API")
+        
+        # 分析代码质量
+        analysis = client.analyze_code_quality(test_code)
+        
+        # 生成测试数据
+        data = client.generate_test_data("用户信息", {"name": "string", "age": "integer"})
     """
     
     def __init__(self, api_key: str, base_url: str = "https://api.deepseek.com/v1"):
         """
         初始化DeepSeek客户端
         
+        初始化过程包括：
+        - 设置API密钥和基础URL
+        - 配置HTTP会话和请求头
+        - 初始化日志记录器
+        - 设置默认参数
+        
         Args:
-            api_key: DeepSeek API密钥
-            base_url: API基础URL
+            api_key: DeepSeek API密钥，从DeepSeek平台获取
+            base_url: API基础URL，默认为官方地址
+        
+        Raises:
+            ValueError: API密钥为空或格式不正确
+            ConnectionError: 无法连接到DeepSeek API服务
         """
+        # 验证API密钥
+        if not api_key or not api_key.strip():
+            raise ValueError("API密钥不能为空")
+        
         self.api_key = api_key
-        self.base_url = base_url
+        self.base_url = base_url.rstrip('/')
         self.logger = logging.getLogger(self.__class__.__name__)
         
-        # 配置请求会话
+        # 配置HTTP会话
         self.session = requests.Session()
         self.session.headers.update({
             'Authorization': f'Bearer {api_key}',
@@ -58,10 +169,24 @@ class DeepSeekClient:
             'User-Agent': 'InterfaceAutoTest/1.0'
         })
         
+        # 设置请求超时和重试
+        self.session.timeout = 60
+        self.max_retries = 3
+        
         # 默认模型配置
-        self.default_model = "deepseek-chat"
-        self.default_temperature = 0.3
-        self.default_max_tokens = 4000
+        self.default_model = AIModel.DEEPSEEK_CHAT.value
+        self.default_temperature = 0.3  # 较低的温度确保输出稳定性
+        self.default_max_tokens = 4000  # 足够的token数量
+        
+        # 使用统计
+        self.usage_stats = {
+            'total_requests': 0,
+            'total_tokens': 0,
+            'successful_requests': 0,
+            'failed_requests': 0
+        }
+        
+        self.logger.info(f"DeepSeek客户端初始化完成，使用模型: {self.default_model}")
     
     def chat_completion(
         self,
@@ -74,15 +199,41 @@ class DeepSeekClient:
         """
         发送聊天完成请求
         
+        这是与DeepSeek AI交互的核心方法，支持多种参数配置和响应模式。
+        方法会自动处理请求重试、错误处理和响应解析。
+        
         Args:
-            messages: 对话消息列表
-            model: 使用的模型名称
-            temperature: 创造性参数 (0.0-2.0)
-            max_tokens: 最大令牌数
-            stream: 是否流式响应
+            messages: 对话消息列表，格式为 [{"role": "user", "content": "消息内容"}]
+            model: 使用的模型名称，可选值：
+                  - "deepseek-chat": 通用对话模型（默认）
+                  - "deepseek-coder": 代码生成模型
+                  - "deepseek-reasoner": 推理模型
+            temperature: 创造性参数，范围0.0-2.0：
+                        - 0.0: 完全确定性输出
+                        - 0.3: 平衡创造性和稳定性（默认）
+                        - 1.0: 标准创造性
+                        - 2.0: 高创造性
+            max_tokens: 最大生成token数，默认4000
+            stream: 是否使用流式响应，默认False
             
         Returns:
-            AIResponse: AI响应结果
+            AIResponse: 包含完整响应信息的AI响应对象
+        
+        Raises:
+            ValueError: 消息格式不正确或参数无效
+            ConnectionError: 网络连接失败
+            TimeoutError: 请求超时
+        
+        使用示例:
+            # 基本对话
+            messages = [{"role": "user", "content": "请生成一个用户登录的测试用例"}]
+            response = client.chat_completion(messages)
+            
+            # 使用特定模型
+            response = client.chat_completion(messages, model="deepseek-coder")
+            
+            # 调整创造性
+            response = client.chat_completion(messages, temperature=0.7)
         """
         url = f"{self.base_url}/chat/completions"
         

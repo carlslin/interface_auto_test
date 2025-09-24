@@ -1,60 +1,148 @@
-# 默认配置文件
-# 支持多环境配置
-
-# 全局配置
-global:
-  timeout: 30         # 请求超时时间(秒)
-  retry: 3            # 重试次数
-  parallel: 5         # 并发数
-  keep_alive: true    # 启用长连接
-  pool_connections: 10  # 连接池大小
-  pool_maxsize: 10     # 单个主机最大连接数
-  
-# 环境配置
+ai:
+  deepseek_api_key: ''
+  deepseek_base_url: https://api.deepseek.com/v1
+  enable_auto_completion: true
+  enable_chat_assistant: true
+  enable_smart_analysis: true
+  enable_test_generation: true
+  max_tokens: 4000
+  model: deepseek-chat
+  temperature: 0.7
+  timeout: 30
+cache:
+  cleanup_interval: 300
+  default_expire_time: 3600
+  enable_compression: true
+  max_cache_size: 100MB
+  redis:
+    db: 0
+    health_check_interval: 30
+    host: localhost
+    max_connections: 10
+    port: 6379
+    retry_on_timeout: true
+    socket_connect_timeout: 5
+    socket_timeout: 5
+  type: redis
+database:
+  mysql:
+    autocommit: true
+    charset: utf8mb4
+    connect_timeout: 10
+    database: autotest
+    host: localhost
+    max_connections: 20
+    password: autotest123
+    pool_pre_ping: true
+    pool_recycle: 3600
+    pool_size: 10
+    port: 3306
+    read_timeout: 30
+    username: autotest
+    write_timeout: 30
+  type: mysql
 environments:
   dev:
-    base_url: "http://dev-api.example.com"
+    base_url: http://dev-api.example.com
+    enable_debug: true
     headers:
-      Authorization: "Bearer dev-token"
-      Content-Type: "application/json"
+      Authorization: Bearer dev-token
+      Content-Type: application/json
+      User-Agent: AutoTest-Dev/1.0
+    test_mode: real
     timeout: 30
-    
-  test:
-    base_url: "http://test-api.example.com" 
+  mock:
+    base_url: http://localhost:5000
+    enable_debug: true
     headers:
-      Authorization: "Bearer test-token"
-      Content-Type: "application/json"
-    timeout: 30
-    
+      Content-Type: application/json
+      User-Agent: AutoTest-Mock/1.0
+    test_mode: mock
+    timeout: 10
   prod:
-    base_url: "https://api.example.com"
+    base_url: https://api.example.com
+    enable_debug: false
     headers:
-      Authorization: "Bearer prod-token"
-      Content-Type: "application/json"
+      Authorization: Bearer prod-token
+      Content-Type: application/json
+      User-Agent: AutoTest-Prod/1.0
+    mock_fallback: false
+    rate_limit: 100
+    test_mode: real
     timeout: 15
-
-# Mock 服务器配置
-mock:
-  port: 5000
-  host: "localhost"
-  debug: true
-  enable_cors: true
-  delay: 0        # 模拟网络延迟(毫秒)
-  
-# 报告配置
-report:
-  format: ["html", "json", "xml"]
-  output_dir: "./reports"
-  template: "default"
-  
-# 测试数据配置
-test_data:
-  data_dir: "./data"
-  generate_data: true
-  faker_locale: "zh_CN"
-
-# 日志配置
+  test:
+    base_url: http://test-api.example.com
+    enable_debug: false
+    headers:
+      Authorization: Bearer test-token
+      Content-Type: application/json
+      User-Agent: AutoTest-Test/1.0
+    test_mode: real
+    timeout: 30
+global:
+  cache_ttl: 3600
+  enable_caching: true
+  enable_performance_monitor: true
+  enable_security_validation: true
+  keep_alive: true
+  max_request_size: 10485760
+  mock_fallback: true
+  parallel: 5
+  pool_connections: 10
+  pool_maxsize: 10
+  retry: 3
+  test_mode: auto
+  timeout: 30
 logging:
-  level: "INFO"
-  format: "%(asctime)s - %(name)s - %(levelname)s - %(message)s"
-  file: "./logs/autotest.log"
+  backup_count: 5
+  compression: true
+  enable_console: true
+  enable_file: true
+  enable_performance_log: true
+  file: ./logs/autotest.log
+  format: '%(asctime)s - %(name)s - %(levelname)s - %(message)s'
+  level: INFO
+  max_file_size: 10MB
+  rotation: daily
+mock:
+  auto_cleanup: true
+  auto_start: false
+  auto_stop: false
+  debug: true
+  delay: 0
+  enable_cors: true
+  enable_route_validation: true
+  enable_ssl: false
+  host: localhost
+  max_routes: 1000
+  port: 5000
+  route_timeout: 300
+report:
+  archive_old_reports: true
+  auto_open: false
+  compress: true
+  format:
+  - html
+  - json
+  - xml
+  include_performance_metrics: true
+  include_request_details: true
+  include_response_details: true
+  include_screenshots: false
+  language: zh_CN
+  output_dir: ./reports
+  template: default
+  theme: default
+test_data:
+  cache_generated_data: true
+  data_dir: ./data
+  data_quality_check: true
+  data_retention_days: 30
+  data_types:
+  - user
+  - product
+  - order
+  - payment
+  faker_locale: zh_CN
+  generate_data: true
+  validate_data: true

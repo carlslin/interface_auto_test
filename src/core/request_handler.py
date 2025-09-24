@@ -8,8 +8,10 @@ from __future__ import annotations
 import requests
 import time
 import logging
+import re
 from typing import Dict, Any, Optional
-from urllib.parse import urljoin
+from urllib.parse import urljoin, urlparse
+from ..utils.security_manager import SecurityManager
 
 
 class RequestHandler:
@@ -25,6 +27,7 @@ class RequestHandler:
         self.config = config
         self.session = requests.Session()
         self.logger = logging.getLogger(self.__class__.__name__)
+        self.security_manager = SecurityManager()
         
         # 不同HTTP方法的差异化超时配置（基于用户记忆的经验）
         self.method_timeouts = {
@@ -33,6 +36,9 @@ class RequestHandler:
             'PUT': 8.0,      # PUT请求8秒超时
             'DELETE': 4.0    # DELETE请求4秒超时
         }
+        
+        # 请求大小限制（字节）
+        self.max_request_size = config.get('global.max_request_size', 10 * 1024 * 1024)  # 10MB
         
         self._setup_session()
         
@@ -68,6 +74,83 @@ class RequestHandler:
         
         # 禁用代理，防止代理导致的连接问题
         self.session.proxies = {}
+    
+    def _validate_request_inputs(self, method: str, url: str, **kwargs) -> None:
+        """
+        验证请求输入参数
+        
+        Args:
+            method: HTTP方法
+            url: 请求URL
+            **kwargs: 其他请求参数
+            
+        Raises:
+            ValueError: 如果输入验证失败
+        """
+        # 验证HTTP方法
+        valid_methods = ['GET', 'POST', 'PUT', 'DELETE', 'PATCH', 'HEAD', 'OPTIONS']
+        if method.upper() not in valid_methods:
+            raise ValueError(f"不支持的HTTP方法: {method}")
+        
+        # 验证URL
+        if not url or not isinstance(url, str):
+            raise ValueError("URL不能为空")
+        
+        # 验证URL格式
+        if not self.security_manager.validate_url(url) and not url.startswith('/'):
+            raise ValueError(f"无效的URL格式: {url}")
+        
+        # 验证请求体大小
+        if 'data' in kwargs:
+            data = kwargs['data']
+            if isinstance(data, str):
+                data_size = len(data.encode('utf-8'))
+            elif isinstance(data, (dict, list)):
+                import json
+                data_size = len(json.dumps(data).encode('utf-8'))
+            else:
+                data_size = len(str(data).encode('utf-8'))
+            
+            if data_size > self.max_request_size:
+                raise ValueError(f"请求体大小超过限制: {data_size} > {self.max_request_size}")
+        
+        # 验证JSON数据
+        if 'json' in kwargs:
+            json_data = kwargs['json']
+            if isinstance(json_data, str):
+                if not self.security_manager.validate_json_input(json_data):
+                    raise ValueError("无效的JSON格式")
+            elif isinstance(json_data, (dict, list)):
+                import json
+                try:
+                    json.dumps(json_data)
+                except (TypeError, ValueError) as e:
+                    raise ValueError(f"JSON序列化失败: {e}")
+        
+        # 清理和验证请求头
+        if 'headers' in kwargs:
+            headers = kwargs['headers']
+            if isinstance(headers, dict):
+                # 清理请求头
+                cleaned_headers = {}
+                for key, value in headers.items():
+                    if isinstance(key, str) and isinstance(value, str):
+                        cleaned_key = self.security_manager.sanitize_input(key)
+                        cleaned_value = self.security_manager.sanitize_input(value)
+                        cleaned_headers[cleaned_key] = cleaned_value
+                kwargs['headers'] = cleaned_headers
+        
+        # 验证参数
+        if 'params' in kwargs:
+            params = kwargs['params']
+            if isinstance(params, dict):
+                cleaned_params = {}
+                for key, value in params.items():
+                    if isinstance(key, str) and isinstance(value, str):
+                        cleaned_key = self.security_manager.sanitize_input(key)
+                        cleaned_value = self.security_manager.sanitize_input(value)
+                        cleaned_params[cleaned_key] = cleaned_value
+                kwargs['params'] = cleaned_params
         
     def request(self, method: str, url: str, **kwargs) -> requests.Response:
         """
@@ -81,6 +164,9 @@ class RequestHandler:
         Returns:
             requests.Response: 响应对象
         """
+        # 验证输入参数
+        self._validate_request_inputs(method, url, **kwargs)
+        
         # 构建完整URL
         base_url = self.config.get('environments.dev.base_url', '')
         if not url.startswith('http'):
@@ -151,9 +237,9 @@ class RequestHandler:
             self.session.headers['Authorization'] = f'Bearer {token}'
         elif auth_type == 'basic':
             username = auth_params.get('username', '')
-            password = auth_params.get('password', '')
+            user_password = auth_params.get('password', '')
             from requests.auth import HTTPBasicAuth
-            self.session.auth = HTTPBasicAuth(username, password)
+            self.session.auth = HTTPBasicAuth(username, user_password)
         elif auth_type == 'api_key':
             key = auth_params.get('key', '')
             header = auth_params.get('header', 'X-API-Key')
