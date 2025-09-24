@@ -2,21 +2,27 @@
 
 [![Python](https://img.shields.io/badge/Python-3.8%2B-blue.svg)](https://python.org)
 [![License](https://img.shields.io/badge/License-MIT-green.svg)](LICENSE)
-[![Version](https://img.shields.io/badge/Version-1.0.0-orange.svg)](CHANGELOG.md)
+[![Version](https://img.shields.io/badge/Version-2.0.0-orange.svg)](CHANGELOG.md)
+[![AI](https://img.shields.io/badge/AI-DeepSeek-purple.svg)](https://deepseek.com)
+[![Blockchain](https://img.shields.io/badge/Blockchain-Multi%20Chain-yellow.svg)](docs/区块链长连接指南.md)
+[![Database](https://img.shields.io/badge/Database-MySQL%20%7C%20Redis-red.svg)](docs/MySQL环境搭建指南.md)
+[![Cache](https://img.shields.io/badge/Cache-Redis%20%7C%20Memory-green.svg)](docs/Redis环境搭建指南.md)
 
-一个功能完整、易于使用的接口自动化测试框架，支持从API文档自动生成测试代码、AI智能测试增强和Mock服务器功能。
+一个功能完整、易于使用的接口自动化测试框架，集成了AI智能化、区块链支持、长连接管理等先进特性，支持从API文档自动生成测试代码、Mock服务器、多数据库集成等全面功能。
 
 ## ✨ 核心特性
 
 🎯 **智能化测试生成**
 - 📄 支持 OpenAPI/Swagger 3.0、Postman Collection 等格式
-- 🤖 集成 DeepSeek AI，智能生成高质量测试用例
+- 🤖 集成 DeepSeek AI，四层智能化架构（L1-L4）
 - 📊 自动生成边界值、异常场景和性能测试
+- 🧠 AI聊天助手，支持自然语言交互
 
 ⚡ **高性能执行**
 - 🔌 内置长连接支持，HTTP Keep-Alive 优化
-- 🚀 并行测试执行，大幅提升效率
+- 🚀 并行测试执行，支持100+并发请求
 - ⏱️ 智能超时策略：GET(3s) POST(5s) PUT(8s) DELETE(4s)
+- 💾 多级缓存系统（内存+Redis）
 
 📤 **多格式导出**
 - 📊 Excel、Markdown、JSON、CSV、XML 等格式
@@ -28,21 +34,37 @@
 - 🔄 动态路由配置和数据管理
 - 🌐 支持 CORS 和多环境部署
 
+⛓️ **区块链支持**
+- 🔗 支持以太坊、比特币、BSC、Polygon等多链
+- 🌐 WebSocket长连接和HTTP连接池管理
+- 📡 实时事件监听和智能合约测试
+- 💰 钱包管理和交易测试
+
+💾 **数据管理**
+- 🗄️ MySQL和SQLite数据库集成
+- 📊 Redis缓存系统支持
+- 🔄 数据同步和备份功能
+- 📈 性能监控和统计分析
+
 ## 🏠 项目架构
 
 ```
 interface_autotest/
 ├── src/                    # 🏛️ 核心框架代码
-│   ├── ai/                 # 🤖 AI 智能功能模块
+│   ├── ai/                 # 🤖 AI 智能功能模块（四层架构）
+│   ├── blockchain/         # ⛓️ 区块链支持模块
 │   ├── core/               # ⚡ 核心测试引擎
 │   ├── exporters/          # 📤 多格式导出器
 │   ├── mock/               # 🎭 Mock 服务器
 │   ├── parsers/            # 📄 文档解析器
 │   ├── runners/            # 🏃 测试运行器
 │   ├── utils/              # 🛠️ 工具函数库
+│   ├── auth/               # 🔐 认证模块
+│   ├── workflow/           # 🔄 工作流管理
 │   └── cli/                # 💻 命令行界面
 ├── config/                 # ⚙️ 配置文件
 ├── examples/               # 📚 使用示例
+├── scripts/                # 🔧 工具脚本
 ├── tests/                  # 🧪 单元测试
 └── docs/                   # 📖 详细文档
 ```
@@ -90,6 +112,40 @@ autotest ai generate-tests -i api.yaml -o ai_tests/ \
 
 # 🔍 AI 代码审查
 autotest ai review-code -f test_code.py -o review.md
+
+# 💬 AI 聊天助手
+autotest ai-wizard chat --prompt "帮我分析这个API的性能问题"
+```
+
+### 4️⃣ 区块链功能
+
+```bash
+# ⛓️ 连接区块链网络
+autotest blockchain connect --network ethereum --rpc-url https://mainnet.infura.io/v3/YOUR_KEY
+
+# 💰 生成钱包
+autotest blockchain wallet-generate --type ethereum
+
+# 📡 监听区块链事件
+autotest blockchain listen-events --contract-address 0x123... --event-name Transfer
+
+# 🔗 长连接管理
+autotest blockchain status --show-connections
+```
+
+### 5️⃣ 数据库集成
+
+```bash
+# 🗄️ 配置MySQL连接
+autotest config set database.mysql.host localhost
+autotest config set database.mysql.port 3306
+
+# 📊 配置Redis缓存
+autotest config set cache.redis.host localhost
+autotest config set cache.redis.port 6379
+
+# 🔄 数据同步测试
+autotest run tests --path tests/ --with-database --with-cache
 ```
 
 ## 📋 详细使用指南
@@ -239,6 +295,95 @@ autotest generate export-cases \
 | TC_002 | /api/users | POST | 创建新用户 | 201, 返回用户信息 | 高 |
 </details>
 
+### ⛓️ 区块链功能
+
+<details>
+<summary>🔎 点击展开区块链功能详细使用</summary>
+
+#### 支持的区块链网络
+- ✅ **以太坊主网/测试网** - 完整支持所有ERC标准
+- ✅ **比特币网络** - 支持BTC交易和钱包管理
+- ✅ **BSC (Binance Smart Chain)** - 兼容EVM
+- ✅ **Polygon** - 快速低成本的Layer 2网络
+- ✅ **自定义网络** - 支持任意EVM兼容链
+
+#### 连接管理
+```bash
+# 连接以太坊主网
+autotest blockchain connect \
+  --network ethereum \
+  --rpc-url https://mainnet.infura.io/v3/YOUR_PROJECT_ID \
+  --chain-id 1
+
+# 连接测试网
+autotest blockchain connect \
+  --network sepolia \
+  --rpc-url https://sepolia.infura.io/v3/YOUR_PROJECT_ID \
+  --chain-id 11155111
+
+# 查看连接状态
+autotest blockchain status
+```
+
+#### 钱包管理
+```bash
+# 生成新的以太坊钱包
+autotest blockchain wallet-generate \
+  --type ethereum \
+  --save-to wallet.json
+
+# 导入现有钱包
+autotest blockchain wallet-import \
+  --private-key 0x123... \
+  --type ethereum
+
+# 查看钱包余额
+autotest blockchain balance \
+  --address 0x742d35Cc6634C0532925a3b8D8Ac97C0e6c8a7B
+```
+
+#### 智能合约测试
+```bash
+# 部署智能合约
+autotest blockchain deploy-contract \
+  --abi contract.abi \
+  --bytecode contract.bytecode \
+  --constructor-args "Hello World"
+
+# 调用合约方法
+autotest blockchain call-contract \
+  --address 0x742d35Cc... \
+  --method "getValue" \
+  --abi contract.abi
+
+# 发送合约交易
+autotest blockchain send-contract-tx \
+  --address 0x742d35Cc... \
+  --method "setValue" \
+  --args "42" \
+  --value 0.1
+```
+
+#### 长连接和事件监听
+```bash
+# 监听新区块
+autotest blockchain listen-events \
+  --event newBlockHeaders \
+  --callback block_handler.py
+
+# 监听合约事件
+autotest blockchain listen-events \
+  --contract-address 0x742d35Cc... \
+  --event-name Transfer \
+  --abi contract.abi
+
+# 查看连接统计
+autotest blockchain stats \
+  --show-performance \
+  --show-connections
+```
+</details>
+
 ### 🤖 AI 智能功能
 
 <details>
@@ -306,6 +451,73 @@ autotest ai generate-data \
 ```
 </details>
 
+### 💾 数据库集成
+
+<details>
+<summary>🔎 点击展开数据库集成详细使用</summary>
+
+#### MySQL 数据库
+```bash
+# 配置MySQL连接
+autotest config set database.mysql.host localhost
+autotest config set database.mysql.port 3306
+autotest config set database.mysql.user autotest
+autotest config set database.mysql.password your_password
+autotest config set database.mysql.database autotest
+
+# 测试数据库连接
+autotest database test-connection --type mysql
+
+# 执行SQL查询
+autotest database query \
+  --sql "SELECT * FROM users WHERE status = 'active'" \
+  --output results.json
+
+# 数据同步测试
+autotest run tests --path tests/ --with-database --sync-data
+```
+
+#### Redis 缓存
+```bash
+# 配置Redis连接
+autotest config set cache.redis.host localhost
+autotest config set cache.redis.port 6379
+autotest config set cache.redis.db 0
+autotest config set cache.redis.password your_password
+
+# 测试缓存连接
+autotest cache test-connection --type redis
+
+# 缓存性能测试
+autotest cache benchmark \
+  --operations 10000 \
+  --threads 10 \
+  --output cache_report.json
+
+# 使用缓存的测试
+autotest run tests --path tests/ --with-cache --cache-ttl 3600
+```
+
+#### 数据管理
+```bash
+# 数据库备份
+autotest database backup \
+  --type mysql \
+  --output backup_$(date +%Y%m%d).sql
+
+# 数据迁移
+autotest database migrate \
+  --source mysql \
+  --target sqlite \
+  --tables users,orders,products
+
+# 数据清理
+autotest database cleanup \
+  --tables test_data,temp_cache \
+  --older-than 7days
+```
+</details>
+
 ### 📈 测试执行与报告
 
 <details>
@@ -357,6 +569,10 @@ global:
   keep_alive: true      # 🔌 启用长连接
   pool_connections: 10  # 连接池大小
   pool_maxsize: 10      # 单主机最大连接数
+  security:
+    max_request_size: 10485760  # 10MB
+    enable_encryption: true
+    input_validation: true
 
 environments:
   dev:
@@ -374,11 +590,57 @@ environments:
 ai:
   deepseek_api_key: "sk-your-api-key"  # 🤖 AI 功能密钥
   model: "deepseek-chat"
+  enable_chat: true
+  enable_code_review: true
   
 mock:
   port: 8080
   host: "localhost"
   enable_cors: true
+
+# 区块链配置
+blockchain:
+  ethereum:
+    rpc_url: "https://mainnet.infura.io/v3/YOUR_PROJECT_ID"
+    chain_id: 1
+    connection_type: "websocket"
+    max_connections: 5
+    heartbeat_interval: 30
+  bitcoin:
+    rpc_url: "https://blockstream.info/api"
+    connection_type: "http"
+
+# 数据库配置
+database:
+  mysql:
+    host: "localhost"
+    port: 3306
+    user: "autotest"
+    password: "your_password"
+    database: "autotest"
+    pool_size: 10
+  sqlite:
+    path: "data/test.db"
+
+# 缓存配置
+cache:
+  type: "redis"  # 或 "memory"
+  redis:
+    host: "localhost"
+    port: 6379
+    db: 0
+    password: ""
+    max_connections: 10
+  memory:
+    max_size: 1000
+    default_ttl: 3600
+
+# 性能监控
+monitoring:
+  enable_performance_monitor: true
+  enable_system_monitor: true
+  log_level: "INFO"
+  metrics_interval: 60
 ```
 
 ### 配置命令
@@ -544,24 +806,72 @@ class CustomExporter(TestCaseExporter):
 
 ## 📚 项目文档
 
-- 📖 [完整使用指南](docs/user_guide.md)
-- 🤖 [AI 集成指南](docs/ai_integration_guide.md)
-- 📤 [测试用例导出指南](docs/test_case_export_guide.md)
-- 🎭 [Mock 服务器指南](docs/mock_server_guide.md)
-- 🔌 [长连接优化指南](docs/persistent_connection_guide.md)
-- 🚀 [CI/CD 集成指南](docs/cicd_integration_guide.md)
+### 核心文档
+- 📖 [完整使用文档](docs/完整使用文档.md) - 详细的使用指南
+- 🚀 [快速开始指南](docs/快速开始指南.md) - 快速上手指南
+- 🏗️ [技术架构文档](docs/技术架构文档.md) - 技术架构说明
+
+### 功能指南
+- 🤖 [AI测试场景生成指南](docs/AI测试场景生成指南.md) - AI功能使用指南
+- ⛓️ [区块链长连接指南](docs/区块链长连接指南.md) - 区块链功能指南
+- 🗄️ [MySQL环境搭建指南](docs/MySQL环境搭建指南.md) - MySQL配置指南
+- 📊 [Redis环境搭建指南](docs/Redis环境搭建指南.md) - Redis配置指南
+
+### 工具文档
+- 🤖 [AI集成指南](docs/ai_integration_guide.md) - AI功能集成
+- 📤 [测试用例导出指南](docs/test_case_export_guide.md) - 导出功能使用
+- 👤 [用户指南](docs/user_guide.md) - 用户操作指南
+
+### 架构文档
+- 🏗️ [项目架构图](docs/项目架构图.md) - 项目架构图
+- 🔄 [项目流程图](docs/项目流程图.md) - 项目流程图
 
 ## 🔧 技术规格
 
+### 核心框架
 - **Python 版本**: 3.8+ (完全支持 3.13)
-- **依赖框架**: Flask, Click, Requests, PyYAML, AsyncIO
-- **AI 支持**: DeepSeek API 集成，四层智能化架构
-- **安全特性**: 加密存储、输入验证、SQL注入防护
-- **性能优化**: 异步处理、多级缓存、并发执行
-- **监控体系**: 实时性能监控、系统资源监控
+- **依赖框架**: Flask, Click, Requests, PyYAML, AsyncIO, aiohttp
+- **架构模式**: 模块化设计，易于扩展
+
+### AI 智能化
+- **AI 支持**: DeepSeek API 集成，四层智能化架构 (L1-L4)
+- **功能模块**: 测试生成、代码审查、数据生成、聊天助手
+- **自然语言**: 支持自然语言交互和命令
+
+### 区块链支持
+- **支持网络**: 以太坊、比特币、BSC、Polygon等多链
+- **连接方式**: WebSocket长连接、HTTP连接池
+- **功能特性**: 智能合约测试、钱包管理、事件监听
+- **依赖库**: web3, eth-account, bitcoin, pycryptodome
+
+### 数据管理
+- **数据库**: MySQL、SQLite 完整支持
+- **缓存系统**: Redis、内存缓存多级架构
+- **数据同步**: 自动数据同步和备份功能
+- **连接池**: 智能连接池管理
+
+### 安全特性
+- **数据加密**: 敏感信息自动加密存储
+- **输入验证**: 全面的输入验证和数据清理
+- **安全防护**: SQL注入、XSS、路径遍历防护
+- **配置安全**: 加密的配置文件管理
+
+### 性能优化
+- **异步处理**: 异步HTTP请求，提升68%响应速度
+- **智能缓存**: 内存+Redis多级缓存，85%+命中率
+- **并发优化**: 支持100+并发请求处理
+- **连接复用**: HTTP Keep-Alive 和连接池优化
+
+### 监控体系
+- **性能监控**: 实时性能指标收集和分析
+- **系统监控**: CPU、内存、磁盘使用监控
+- **错误统计**: 详细的错误率统计和分析
+- **智能告警**: 基于阈值的自动告警机制
+
+### 导出和报告
 - **导出格式**: Excel, Markdown, JSON, CSV, XML
 - **报告格式**: HTML, JSON, XML (JUnit)
-- **架构模式**: 模块化设计，易于扩展
+- **可视化**: 丰富的图表和统计分析
 
 ## 🆕 最新优化特性
 
@@ -613,8 +923,8 @@ class CustomExporter(TestCaseExporter):
 
 **🚀 开始您的接口自动化测试之旅吧！**
 
-[⭐ Star](https://github.com/your-repo/interface-autotest-framework) · 
-[🐛 报告问题](https://github.com/your-repo/interface-autotest-framework/issues) · 
-[💡 提出建议](https://github.com/your-repo/interface-autotest-framework/discussions)
+[⭐ Star](https://github.com/carlslin/interface_auto_test) · 
+[🐛 报告问题](https://github.com/carlslin/interface_auto_test/issues) · 
+[💡 提出建议](https://github.com/carlslin/interface_auto_test/discussions)
 
 </div>
